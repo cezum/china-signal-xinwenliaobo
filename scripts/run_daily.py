@@ -129,6 +129,8 @@ def call_llm(system, user, retry_error=None):
             data = post(payload)
         else:
             raise SystemExit(f"LLM 调用失败 HTTP {e.code}: {e.read().decode('utf-8', 'ignore')[-500:]}")
+    except urllib.error.URLError as e:
+        raise SystemExit(f"LLM 网络错误：{e.reason}")
 
     content = data["choices"][0]["message"]["content"]
     return parse_json(content)
