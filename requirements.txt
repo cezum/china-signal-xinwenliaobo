@@ -1,0 +1,12 @@
+# 本项目仅使用 Python 标准库，无第三方依赖。
+#
+# 环境要求：Python 3.9+（推荐 3.11+）
+#
+# 如需锁定运行环境，可创建虚拟环境后直接运行：
+#   python -m venv .venv
+#   .venv\Scripts\activate        # Windows
+#   source .venv/bin/activate     # macOS / Linux
+#
+# 唯一的运行前提是 OpenAI 兼容 LLM 接口的环境变量（见 README）：
+#   LLM_API_KEY（必填）
+#   LLM_BASE_URL / LLM_MODEL（可选，空值自动回退默认）

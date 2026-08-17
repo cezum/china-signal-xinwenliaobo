@@ -4,9 +4,19 @@ __pycache__/
 # 抓取的联播原文（版权归 CCTV，不入库）
 data/raw/
 
+# 跟踪表原子写入的备份文件
+*.bak
+*.bak_before_*
+
 # 环境与密钥
 .env
 .venv/
+
+# 测试与临时输出
+.pytest_cache/
+.tmp-run/
+.tmp-tests/
+*.log
 
 # 编辑器/系统
 .vscode/
