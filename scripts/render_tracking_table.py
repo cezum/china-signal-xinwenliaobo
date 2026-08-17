@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""从 tracking_table.json 渲染 Markdown 跟踪表（v1.2）。
+"""从 tracking_table.json 渲染 Markdown 跟踪表（v1.3）。
 
 输出：
 1. reference/initial_signal_tracking_table.md  完整跟踪表
 2. data/tracking_table_digest.md                自动化用的紧凑摘要
+3. tracking.md                                  面向读者的 5 列极简跟踪表
 
 用法：
     python render_tracking_table.py
-    python render_tracking_table.py --json <path> --md <out> --digest <out>
+    python render_tracking_table.py --json <path> --md <out> --digest <out> --tracking <out>
 
 修复背景（代码审查 2026-08-16）：
 - P1-1 渲染前基于 themes 实时重算 stats，不再使用可能过期的旧统计；
@@ -20,6 +21,7 @@
 
 import argparse
 import os
+from datetime import datetime
 
 from common import write_atomic, read_json, recompute_stats
 
@@ -27,6 +29,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.normpath(os.path.join(BASE, "..", "data", "tracking_table.json"))
 MD_PATH = os.path.normpath(os.path.join(BASE, "..", "reference", "initial_signal_tracking_table.md"))
 DIGEST_PATH = os.path.normpath(os.path.join(BASE, "..", "data", "tracking_table_digest.md"))
+TRACKING_PATH = os.path.normpath(os.path.join(BASE, "..", "tracking.md"))
 
 CN_DIGITS = "一二三四五六七八九"
 
@@ -77,6 +80,83 @@ def cn_num(n):
 def esc(value):
     """转义 Markdown 表格单元格：| 转义、换行折叠为 <br>。"""
     return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\r", " ").replace("\n", "<br>")
+
+
+MAX_SHORT_LOGIC = 40
+
+
+def short_logic(t):
+    """为极简跟踪表提取一句可读的“盯什么”，不改 JSON 数据。"""
+    text = str(t.get("investment_hypothesis", "")).strip()
+    if text:
+        # 新主题常用“→”，旧主题多用“：”；优先取箭头/冒号右侧的动作结果
+        for sep in ("→", "=>", "："):
+            if sep in text:
+                text = text.rsplit(sep, 1)[-1].strip()
+                break
+        text = text.strip(" ，。；、")
+        if text:
+            return text[:MAX_SHORT_LOGIC] + ("…" if len(text) > MAX_SHORT_LOGIC else "")
+
+    v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
+    text = str(v.get("condition", "")).replace("联播报道", "").strip(" ，。；、")
+    if text:
+        return text[:MAX_SHORT_LOGIC] + ("…" if len(text) > MAX_SHORT_LOGIC else "")
+    return "待补"
+
+
+def wind(t):
+    """把状态和政策窗口映射为单列“风向”。"""
+    v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
+    status = str(v.get("status", "跟踪中"))
+    dims = t.get("dimensions") if isinstance(t.get("dimensions"), dict) else {}
+    policy_window = str(dims.get("policy_window", ""))
+
+    if status == "已验证":
+        return "✅", "已验证"
+    if status == "投资线索就绪":
+        return "💡", "线索"
+    if status == "延迟验证":
+        return "🟠", "延迟核验"
+    if status == "待复核":
+        return "🔍", "待复核"
+    if status == "信号衰减":
+        return "❌", "证伪/衰减"
+    if status == "归档":
+        return "🗄️", "归档"
+    if status == "跟踪中":
+        if policy_window == "开放":
+            return "🟢", "抓紧落"
+        if policy_window == "接近":
+            return "🟡", "等风来"
+        if policy_window == "封闭":
+            return "⚪", "暂缓"
+    return "⚪", "未标注"
+
+
+def _parse_iso_date(value):
+    try:
+        return datetime.strptime(str(value).strip(), "%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def _tracking_sort_key(t):
+    """未验证主题排前，验证日期越近越靠前；归档与已验证排后。"""
+    status_order = {
+        "跟踪中": 0,
+        "延迟验证": 1,
+        "待复核": 2,
+        "投资线索就绪": 3,
+        "已验证": 4,
+        "信号衰减": 5,
+        "归档": 6,
+    }
+    v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
+    status = str(v.get("status", "跟踪中"))
+    rank = status_order.get(status, 7)
+    due = _parse_iso_date(v.get("date", ""))
+    return (rank, due or datetime.max, int(t.get("id", 0)))
 
 
 def dist_table(doc, field, label, theme_ids_col=None):
@@ -403,11 +483,67 @@ def render_digest(doc):
     return "\n".join(out)
 
 
+def render_tracking(doc):
+    """渲染面向读者的 5 列极简跟踪表。"""
+    out = []
+    out.append("# 极简跟踪表")
+    out.append("")
+    out.append(
+        f"> 由 tracking_table.json 自动生成，更新于 "
+        f"{esc(doc['meta'].get('generated_at', '?'))}。完整字段见 "
+        f"reference/initial_signal_tracking_table.md；口径说明见 "
+        f"notes/如何看懂这份雷达.md。"
+    )
+    out.append("")
+    out.append("| # | 主题 | 风向 | 验证日期 | 盯什么 |")
+    out.append("|---|------|------|----------|--------|")
+
+    for t in sorted(doc.get("themes", []), key=_tracking_sort_key):
+        dims = t.get("dimensions") if isinstance(t.get("dimensions"), dict) else {}
+        v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
+
+        novelty = str(dims.get("novelty", ""))
+        badge = "🆕" if novelty == "NEW" else "🔄" if novelty == "PROGRESS" else ""
+        topic = f"{badge} {esc(t.get('name', ''))}".strip() if badge else esc(t.get("name", ""))
+
+        emoji, label = wind(t)
+        wind_text = f"{emoji} {label}"
+
+        date = str(v.get("date", "")).strip()
+        if not _parse_iso_date(date):
+            date = "待锚定"
+
+        out.append(
+            f"| {int(t.get('id', 0))} | {topic} | {wind_text} | "
+            f"{esc(date)} | {esc(short_logic(t))} |"
+        )
+
+    out += [
+        "",
+        "## 风向图例",
+        "",
+        "- 🟢 抓紧落：跟踪中 + 窗口开放",
+        "- 🟡 等风来：跟踪中 + 窗口接近",
+        "- ⚪ 暂缓：跟踪中 + 窗口封闭",
+        "- 🟠 延迟核验：验证日已过，宽限期内",
+        "- 🔍 待复核：宽限期已过，等人工核验",
+        "- ✅ 已验证：验证条件已满足",
+        "- 💡 线索：已验证且值得继续深入",
+        "- ❌ 证伪/衰减：假设被证伪或信号衰减",
+        "- 🗄️ 归档：已移出主跟踪表",
+        "",
+        "> 本表只展示 5 个核心列；层级、首次性、具体性、政策窗口、叙事框架和完整验证条件仍以完整跟踪表为准。",
+        "",
+    ]
+    return "\n".join(out)
+
+
 def main():
     ap = argparse.ArgumentParser(description="从 tracking_table.json 渲染 Markdown 跟踪表")
     ap.add_argument("--json", default=JSON_PATH, help="跟踪表 JSON 路径")
     ap.add_argument("--md", default=MD_PATH, help="完整跟踪表 Markdown 输出路径")
     ap.add_argument("--digest", default=DIGEST_PATH, help="自动化摘要输出路径")
+    ap.add_argument("--tracking", default=TRACKING_PATH, help="极简跟踪表 Markdown 输出路径")
     args = ap.parse_args()
 
     doc = read_json(args.json)
@@ -415,8 +551,10 @@ def main():
     recompute_stats(doc)
     write_atomic(args.md, render_full(doc))
     write_atomic(args.digest, render_digest(doc))
+    write_atomic(args.tracking, render_tracking(doc))
     print(f"已渲染: {args.md}")
     print(f"已渲染: {args.digest}")
+    print(f"已渲染: {args.tracking}")
 
 
 if __name__ == "__main__":

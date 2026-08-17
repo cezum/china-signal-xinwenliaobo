@@ -6,6 +6,8 @@
 
 ---
 
+> Everyone is reading *Xinwen Lianbo* — but what exactly are they looking for? This is my daily log of policy winds, industry transmission, and falsifiable hypothesis check-ins.
+
 One evening in August, the nightly news described nuclear power with four words: *积极安全有序发展* — "actively, safely, orderly develop." Our system flagged it immediately: nuclear had just crossed from the **Competition** frame to the **Security** frame. Quiet on the surface. Big for anyone watching China's energy industry.
 
 That's the kind of signal this project is built to catch.
@@ -36,6 +38,12 @@ A daily Markdown report + a structured tracking table (JSON + rendered). A real 
 > Hypothesis: nuclear enters the Security frame (top priority) → approval/construction pace decides order flow for nuclear equipment, construction and operators.
 
 Full sample: [`reports/2026-08-12.md`](reports/2026-08-12.md)
+
+## Start here
+
+- Want to see what is currently tracked? Open [`tracking.md`](tracking.md)
+- Want to understand the method and vocabulary? Open [`notes/如何看懂这份雷达.md`](notes/如何看懂这份雷达.md)
+- Want the daily reports? Browse [`reports/`](reports/)
 
 ## How it works
 
@@ -82,6 +90,9 @@ The daily loop feeds the tracking table; verification results feed back into the
 │   ├── tracking_table_digest.md    # compact digest for automation (rendered)
 │   ├── raw/                        # transcripts (gitignored, never committed)
 │   └── backtest_stats/             # pure statistics and charts (can be public)
+├── notes/
+│   └── 如何看懂这份雷达.md          # human-readable guide: terms, legends, method, boundaries
+├── tracking.md                     # auto-generated 5-column compact tracking table
 ├── reference/
 │   ├── design.md                   # methodology design doc
 │   ├── framework-dictionary.md     # narrative-frame judgment dictionary

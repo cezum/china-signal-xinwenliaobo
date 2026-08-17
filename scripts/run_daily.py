@@ -59,6 +59,7 @@ PATHS = {
     "raw": os.path.join(DATA, "raw"),
     "tracking": os.path.join(DATA, "tracking_table.json"),
     "digest": os.path.join(DATA, "tracking_table_digest.md"),
+    "tracking_md": os.path.join(ROOT, "tracking.md"),
     "reports": os.path.join(ROOT, "reports"),
 }
 
@@ -268,6 +269,16 @@ def validate_llm_result(result):
     report = result.get("report_markdown")
     if not isinstance(report, str) or not report.strip():
         errors.append("report_markdown 缺失或为空")
+    elif report.count("<details>") != report.count("</details>"):
+        errors.append("report_markdown 中 <details> 与 </details> 数量不一致")
+    elif report.count("<summary>") != report.count("</summary>"):
+        errors.append("report_markdown 中 <summary> 与 </summary> 数量不一致")
+    elif "<details>" not in report or "<summary>" not in report:
+        warnings.append("report_markdown 未使用双层 <details> 结构，建议补充证据底稿")
+
+    summary = result.get("report_summary")
+    if not isinstance(summary, str) or not summary.strip():
+        warnings.append("report_summary 缺失或为空，推送将回退解析日报正文")
     if not isinstance(result.get("expiry_check"), str):
         warnings.append("expiry_check 缺失，视为无到期检验点")
     return errors, warnings
@@ -424,7 +435,45 @@ def apply_expiry_checks(doc, today):
 
 # ---------------------------------------------------------------- 通知
 
-def notify(report_path):
+def _strip_html(text):
+    """去掉 <details> 折叠块和 HTML 标签，返回纯文本。"""
+    text = re.sub(r"<details>.*?</details>", "", text, flags=re.S)
+    text = re.sub(r"<[^>]+>", "", text)
+    return text.strip()
+
+
+def build_notify_text(md):
+    """从日报 Markdown 中提取适合推送的纯文本摘要。"""
+    parts = []
+
+    title = re.search(r"^#\s+.*$", md, flags=re.M)
+    if title:
+        parts.append(title.group(0).strip())
+
+    one_line = re.search(r">\s*今日一句[：:]\s*(.*)", md)
+    if one_line:
+        parts.append("今日一句：" + one_line.group(1).strip())
+
+    cards = re.search(
+        r"##\s*🎯\s*今日速览(.*?)(?=\n##\s*📌\s*风险与验证打卡|\n##\s*⚠️\s*风险提示)",
+        md, flags=re.S)
+    if cards:
+        body = _strip_html(cards.group(1))
+        if body:
+            parts.append("🎯 今日速览\n" + body)
+
+    verify = re.search(
+        r"##\s*📌\s*风险与验证打卡(.*?)(?=\n##\s*⚠️\s*风险提示|\Z)",
+        md, flags=re.S)
+    if verify:
+        body = _strip_html(verify.group(1))
+        if body:
+            parts.append("📌 风险与验证打卡\n" + body)
+
+    return "\n\n".join(parts) if parts else _strip_html(md)
+
+
+def notify(report_path, summary=None):
     """推送日报简报；任何失败只降级为警告，不阻断主流程（P1-4）。"""
     try:
         notify_type = env_or("NOTIFY_TYPE").strip().lower()
@@ -437,9 +486,9 @@ def notify(report_path):
             return
 
         md = read_text(report_path)
-        m = re.search(r"## 今日要点(.*?)(?=\n## )", md, re.S)
-        text = (m.group(1).strip() if m else md)[:1200]
-        title = f"新闻联播政策信号日报 {os.path.basename(report_path)[:10]}"
+        text = (_strip_html(summary or "") if summary else "") or build_notify_text(md)
+        text = text[:1200]
+        title = f"联播风向标 {os.path.basename(report_path)[:10]}"
 
         if notify_type == "serverchan":
             body = urllib.parse.urlencode({"title": title, "desp": text}).encode("utf-8")
@@ -484,6 +533,7 @@ def setup_temp_paths():
         "raw": os.path.join(tmp_data, "raw"),
         "tracking": os.path.join(tmp_data, "tracking_table.json"),
         "digest": os.path.join(tmp_data, "tracking_table_digest.md"),
+        "tracking_md": os.path.join(tmp, "tracking.md"),
         "reports": tmp_reports,
     })
     return tmp
@@ -533,13 +583,36 @@ def main():
                 }
             ],
             "expiry_check": "mock：无检验点到期",
+            "report_summary": (
+                f"联播风向标 | {target_date}\n"
+                "今日一句：mock 测试信号。\n"
+                "🎯 今日速览：示例测试主题，测试假设 → 测试产业链。\n"
+                "📌 验证打卡：暂无。"
+            ),
             "report_markdown": (
-                f"# 新闻联播政策信号日报 | {target_date}\n\n"
-                "## 今日要点\n\nmock 日报正文。\n\n"
-                "## 读报指南\n\nmock 读报指南。\n\n"
-                "## 信号详析\n\nmock 信号。\n\n"
-                "## 信号跟踪表\n\nmock 跟踪表。\n\n"
-                "## 风险提示\n\nmock 风险。\n"
+                f"# 联播风向标 | {target_date}\n\n"
+                "> 今日一句：mock 测试信号。\n\n"
+                "## 🎯 今日速览\n\n"
+                "#### 1. 🆕 示例测试主题\n\n"
+                "- **联播怎么说：** mock 联播事件。\n"
+                "- **行业传导：** 测试产业链。\n"
+                "- **接下来盯：** 联播报道 mock 检验条件。\n"
+                "- **📈 叙事：卷发展 · 🆕 新建主题**\n\n"
+                "<details>\n"
+                "<summary>📂 证据与方法底稿</summary>\n\n"
+                "- **联播原文：** mock 证据\n"
+                "- **维度：** C / NEW / S2 / 接近 / MID\n"
+                "- **叙事框架：** 发展框架（mock 判定依据）\n"
+                "- **投资假设：** 测试假设 → 测试产业链\n"
+                "- **验证条件：** 联播报道 mock 检验条件\n"
+                "- **验证日期：** 2026-12-31\n"
+                "- **十五五映射：** 第五篇 第16章（有效投资）\n\n"
+                "</details>\n\n"
+                "---\n\n"
+                "## 📌 风险与验证打卡\n\n"
+                "- ✅ 无到期验证\n\n"
+                "## ⚠️ 风险提示\n\n"
+                "- mock 风险提示。\n"
             ),
         }
     else:
@@ -610,7 +683,8 @@ def main():
 
     print("[6/7] 渲染跟踪表...")
     render_cmd = [sys.executable, os.path.join(SCRIPTS, "render_tracking_table.py"),
-                  "--json", PATHS["tracking"], "--digest", PATHS["digest"]]
+                  "--json", PATHS["tracking"], "--digest", PATHS["digest"],
+                  "--tracking", PATHS["tracking_md"]]
     if dry_run:
         render_cmd += ["--md", os.path.join(tmp_root, "reference",
                                             "initial_signal_tracking_table.md")]
@@ -625,7 +699,7 @@ def main():
     if dry_run:
         print("        dry-run：跳过真实推送")
     else:
-        notify(report_path)
+        notify(report_path, summary=result.get("report_summary"))
 
     if dry_run:
         print(f"完成（dry-run）：{report_path}")

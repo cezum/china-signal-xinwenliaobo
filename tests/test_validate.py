@@ -43,7 +43,12 @@ def base_result(signals=None):
     return {
         "signals": signals if signals is not None else [valid_new_signal()],
         "expiry_check": "无到期检验点",
-        "report_markdown": "# 日报\n\n正文",
+        "report_summary": "今日一句：测试。\n今日速览：测试。",
+        "report_markdown": (
+            "# 联播风向标 | 2026-08-17\n\n"
+            "## 🎯 今日速览\n\n"
+            "<details>\n<summary>📂 证据与方法底稿</summary>\n正文\n</details>\n"
+        ),
     }
 
 
@@ -115,6 +120,40 @@ class TestValidate(unittest.TestCase):
         errors, warnings = rd.validate_llm_result(r)
         self.assertEqual(errors, [])
         self.assertTrue(any("expiry_check" in w for w in warnings))
+
+    def test_missing_report_summary_is_warning(self):
+        r = base_result(); r.pop("report_summary")
+        errors, warnings = rd.validate_llm_result(r)
+        self.assertEqual(errors, [])
+        self.assertTrue(any("report_summary" in w for w in warnings))
+
+    def test_unclosed_details_is_error(self):
+        r = base_result()
+        r["report_markdown"] = "<details><summary>标题</summary>正文"
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("details" in e for e in errors))
+
+
+class TestNotifyHelpers(unittest.TestCase):
+    def test_build_notify_text_skips_details(self):
+        md = (
+            "# 联播风向标 | 2026-08-17\n\n"
+            "> 今日一句：测试信号。\n\n"
+            "## 🎯 今日速览\n\n"
+            "#### 1. 示例主题\n\n"
+            "- **联播怎么说：** 联播报道。\n"
+            "- **行业传导：** 测试产业链。\n"
+            "- **接下来盯：** 测试方案。\n\n"
+            "<details>\n<summary>证据</summary>\n不要推送这段\n</details>\n\n"
+            "## 📌 风险与验证打卡\n\n- ✅ 无\n\n"
+            "## ⚠️ 风险提示\n\n- 风险\n"
+        )
+        text = rd.build_notify_text(md)
+        self.assertIn("今日一句", text)
+        self.assertIn("🎯 今日速览", text)
+        self.assertIn("📌 风险与验证打卡", text)
+        self.assertNotIn("不要推送这段", text)
+        self.assertNotIn("<details>", text)
 
 
 if __name__ == "__main__":

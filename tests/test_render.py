@@ -117,5 +117,31 @@ class TestRenderDigest(unittest.TestCase):
         self.assertIn("未标注", text)
 
 
+class TestRenderTracking(unittest.TestCase):
+    def test_short_logic_prefers_arrow_right_side(self):
+        theme = make_theme(1)
+        theme["investment_hypothesis"] = "政策背景描述 → 城市防洪排涝工程、监测预警装备、应急产业订单加速"
+        self.assertTrue(rt.short_logic(theme).startswith("城市防洪排涝工程"))
+
+    def test_short_logic_falls_back_to_verification_condition(self):
+        theme = make_theme(1)
+        theme["investment_hypothesis"] = ""
+        theme["verification"]["condition"] = "应急管理部发布防洪排涝专项方案"
+        self.assertEqual(rt.short_logic(theme), "应急管理部发布防洪排涝专项方案")
+
+    def test_wind_maps_tracking_open_to_go(self):
+        theme = make_theme(1)
+        theme["verification"]["status"] = "跟踪中"
+        theme["dimensions"]["policy_window"] = "开放"
+        self.assertEqual(rt.wind(theme), ("🟢", "抓紧落"))
+
+    def test_render_tracking_has_five_columns_and_legend(self):
+        doc = make_doc(themes=[make_theme(1)])
+        text = rt.render_tracking(doc)
+        self.assertIn("| # | 主题 | 风向 | 验证日期 | 盯什么 |", text)
+        self.assertIn("## 风向图例", text)
+        self.assertIn("🟢 抓紧落", text)
+
+
 if __name__ == "__main__":
     unittest.main()
