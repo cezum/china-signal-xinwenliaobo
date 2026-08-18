@@ -133,6 +133,36 @@ class TestValidate(unittest.TestCase):
         errors, _ = rd.validate_llm_result(r)
         self.assertTrue(any("details" in e for e in errors))
 
+    def test_card_without_details_is_error(self):
+        r = base_result()
+        r["report_markdown"] = (
+            "# 联播风向标 | 2026-08-17\n\n"
+            "## 🎯 今日速览\n\n"
+            "#### 1. 测试主题\n\n"
+            "- **联播怎么说：** 测试\n"
+        )
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("卡片" in e for e in errors))
+
+    def test_summary_must_be_fixed_text(self):
+        r = base_result()
+        r["report_markdown"] = (
+            "# 联播风向标 | 2026-08-17\n\n"
+            "## 🎯 今日速览\n\n"
+            "<details><summary>证据底稿</summary>正文</details>\n"
+        )
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("必须固定" in e for e in errors))
+
+    def test_summary_outside_details_is_error(self):
+        r = base_result()
+        r["report_markdown"] = (
+            "<summary>📂 证据与方法底稿</summary>"
+            "<details>正文</details>"
+        )
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("必须位于" in e for e in errors))
+
 
 class TestNotifyHelpers(unittest.TestCase):
     def test_build_notify_text_skips_details(self):

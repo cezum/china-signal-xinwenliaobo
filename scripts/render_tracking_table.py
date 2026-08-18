@@ -21,6 +21,7 @@
 
 import argparse
 import os
+import re
 from datetime import datetime
 
 from common import write_atomic, read_json, recompute_stats
@@ -85,21 +86,29 @@ def esc(value):
 MAX_SHORT_LOGIC = 40
 
 
-def short_logic(t):
-    """为极简跟踪表提取一句可读的“盯什么”，不改 JSON 数据。"""
-    text = str(t.get("investment_hypothesis", "")).strip()
+def public_conduction(t):
+    """公开层使用的“政策传导/盯什么”文本，不直接暴露投资假设。
+
+    优先读取新增的 public_conduction 字段；历史主题没有该字段时，
+    从 verification.condition 中提取一个中性、可核验的验证锚点。
+    """
+    text = str(t.get("public_conduction", "")).strip()
     if text:
-        # 新主题常用“→”，旧主题多用“：”；优先取箭头/冒号右侧的动作结果
-        for sep in ("→", "=>", "："):
-            if sep in text:
-                text = text.rsplit(sep, 1)[-1].strip()
-                break
-        text = text.strip(" ，。；、")
-        if text:
-            return text[:MAX_SHORT_LOGIC] + ("…" if len(text) > MAX_SHORT_LOGIC else "")
+        return text
 
     v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
-    text = str(v.get("condition", "")).replace("联播报道", "").strip(" ，。；、")
+    text = str(v.get("condition", "")).strip()
+    # 去掉“（检验……）”这类内部验证注释，只保留公开可观察的验证锚点
+    text = re.sub(r"[（(]检验[^）)]*[）)]", "", text)
+    text = re.sub(r"\s+", " ", text)
+    text = text.replace("联播报道", "")
+    text = text.strip(" ，。；、|")
+    return text
+
+
+def short_logic(t):
+    """为极简跟踪表提取一句可读的“盯什么”，不改 JSON 数据。"""
+    text = public_conduction(t)
     if text:
         return text[:MAX_SHORT_LOGIC] + ("…" if len(text) > MAX_SHORT_LOGIC else "")
     return "待补"
@@ -183,7 +192,7 @@ def dist_table(doc, field, label, theme_ids_col=None):
 def render_theme(t):
     dim = t.get("dimensions") if isinstance(t.get("dimensions"), dict) else {}
     lines = [f"## 主题{t['id']}: {esc(t.get('name', ''))}", ""]
-    lines.append(f"> **投资假设：** {esc(t.get('investment_hypothesis', ''))}")
+    lines.append(f"> **政策传导逻辑：** {esc(public_conduction(t))}")
     lines.append(f"> **框架判定依据：** {esc(t.get('framework_evidence', '未记录'))}")
     lines.append("")
     lines += [
@@ -331,7 +340,7 @@ def render_full(doc):
     out.append("| 政策窗口 | 出细则的概率：开放=问题流/政策流/政治流三流齐备、短期落地概率高，接近=差一个推力，封闭=暂不具备条件 |")
     out.append("| 验证窗口 | 多久能验证：SHORT=1-4周，MID=1-3个月，LONG=无明确节点 |")
     out.append("| 叙事框架 | 联播报道采用的话术基调：安全框架（守住底线/自主可控）、竞争框架（抢占/引领）、民生框架（兜底/保障）、发展框架（培育/壮大） |")
-    out.append("| 投资假设 | 每个主题一句话的投资/产业逻辑；验证条件就是能证实或证伪这句假设的具体事件或数据 |")
+    out.append("| 政策传导逻辑 | 公开层展示政策信号可能传导到的产业/实物工作量方向，不构成投资建议；内部验证假设只用于系统可证伪验证闭环 |")
     out.append("| 框架判定依据 | 当前框架标签的证据（命中词典词或原文片段）；无依据=待补证，见 reference/framework-dictionary.md |")
     out.append("| 生命周期事件 | 分析模型的状态变更记录（建档/框架变更/状态流转/首次性更新），每条含证据与原因；时间线记联播事件，生命周期记我们自己的分析决策 |")
     out.append("")
@@ -456,10 +465,10 @@ def render_digest(doc):
             f"{esc(v.get('date', ''))} | {esc(v.get('condition', ''))} |"
         )
     out.append("")
-    out.append("### 主题投资假设速览")
+    out.append("### 主题政策传导速览")
     out.append("")
     for t in doc["themes"]:
-        out.append(f"- 主题{t['id']} {esc(t.get('name', ''))}：{esc(t.get('investment_hypothesis', ''))}")
+        out.append(f"- 主题{t['id']} {esc(t.get('name', ''))}：{esc(public_conduction(t))}")
     out.append("")
     out.append("### 验证日期含\"待确认\"的主题（自动化无法自动触发，需人工锚定）")
     out.append("")
@@ -477,7 +486,7 @@ def render_digest(doc):
     out.append("- 跟踪中 → 延迟验证（验证日期过后、宽限期内满足）")
     out.append("- 跟踪中 → 待复核（宽限期过后联播仍无验证信号：转人工外部核验，不自动判衰减）")
     out.append("- 待复核 → 已验证 / 信号衰减（外部查证证实 / 证伪）")
-    out.append("- 已验证 → 投资线索就绪（验证通过+用户判断值得深入）")
+    out.append("- 已验证 → 可跟踪线索（验证通过+用户判断值得继续深入）")
     out.append("- 信号衰减 → 归档（移出跟踪表，记录失败原因）")
     out.append("")
     return "\n".join(out)

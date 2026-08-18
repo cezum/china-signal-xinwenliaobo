@@ -189,6 +189,74 @@ def parse_json(content):
     return json.loads(text)
 
 
+def _validate_report_structure(report):
+    """校验日报双层 HTML 结构：闭合、嵌套顺序、每卡配对、summary 固定文案。"""
+    errors = []
+    speed = re.search(
+        r"^##\s*🎯\s*今日速览\s*$(.*?)"
+        r"(?=^##\s*📌\s*风险与验证打卡\s*$|^##\s*⚠️\s*风险提示\s*$|\Z)",
+        report,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    cards = re.findall(r"^####\s*\d+\.\s*\S", speed.group(1), flags=re.MULTILINE) if speed else []
+
+    details_open = report.count("<details>")
+    details_close = report.count("</details>")
+    summary_open = report.count("<summary>")
+    summary_close = report.count("</summary>")
+
+    if details_open != details_close:
+        errors.append(
+            f"report_markdown 中 <details> 与 </details> 数量不一致"
+            f"（{details_open} 对 {details_close}）")
+    if summary_open != summary_close:
+        errors.append(
+            f"report_markdown 中 <summary> 与 </summary> 数量不一致"
+            f"（{summary_open} 对 {summary_close}）")
+    if details_open == 0 or summary_open == 0:
+        errors.append("report_markdown 必须使用双层 <details> 结构：每个速览卡片后都要有证据与方法底稿")
+    if summary_open != details_open:
+        errors.append(
+            f"report_markdown 中 <details> 与 <summary> 数量不一致"
+            f"（{details_open} 个 details，{summary_open} 个 summary）")
+    if cards and len(cards) != details_open:
+        errors.append(
+            f"report_markdown 今日速览有 {len(cards)} 张卡片，"
+            f"但只有 {details_open} 个 <details>，每张卡片后必须对应一个折叠底稿")
+
+    for i, text in enumerate(re.findall(r"<summary>(.*?)</summary>", report, re.DOTALL), 1):
+        if text.strip() != "📂 证据与方法底稿":
+            errors.append(
+                f"report_markdown 第 {i} 个 <summary> 内容必须固定为"
+                f"「📂 证据与方法底稿」")
+
+    stack = []
+    tokens = re.findall(r"</?details>|</?summary>", report, flags=re.IGNORECASE)
+    for token in tokens:
+        tag = token.lower()
+        if tag == "<details>":
+            stack.append("details")
+        elif tag == "<summary>":
+            if not stack or stack[-1] != "details":
+                errors.append("report_markdown 中 <summary> 必须位于 <details> 内")
+                break
+            stack.append("summary")
+        elif tag == "</summary>":
+            if not stack or stack[-1] != "summary":
+                errors.append("report_markdown 中 </summary> 缺少对应的 <summary>")
+                break
+            stack.pop()
+        elif tag == "</details>":
+            if not stack or stack[-1] != "details":
+                errors.append("report_markdown 中 </details> 缺少对应的 <details>")
+                break
+            stack.pop()
+    else:
+        if stack:
+            errors.append("report_markdown 中 HTML 标签未正确闭合或嵌套")
+    return errors
+
+
 # ---------------------------------------------------------------- 输出校验
 
 def validate_llm_result(result):
@@ -239,6 +307,8 @@ def validate_llm_result(result):
                     errors.append(f"{tag}.new_theme.verification 必须是对象")
                 elif "status" in nt["verification"] and nt["verification"]["status"] not in VER_STATUS:
                     warnings.append(f"{tag}.new_theme.verification.status 非法值，回退默认值")
+                if "public_conduction" in nt and not isinstance(nt["public_conduction"], str):
+                    errors.append(f"{tag}.new_theme.public_conduction 必须是字符串")
                 if "category" in nt and not isinstance(nt["category"], str):
                     errors.append(f"{tag}.new_theme.category 必须是字符串")
             else:
@@ -265,16 +335,14 @@ def validate_llm_result(result):
                         errors.append(f"{tag}.update.verification 必须是对象")
                     elif "status" in ver and ver["status"] not in VER_STATUS:
                         errors.append(f"{tag}.update.verification.status 非法值：{ver['status']!r}")
+                if "public_conduction" in upd and not isinstance(upd["public_conduction"], str):
+                    errors.append(f"{tag}.update.public_conduction 必须是字符串")
 
     report = result.get("report_markdown")
     if not isinstance(report, str) or not report.strip():
         errors.append("report_markdown 缺失或为空")
-    elif report.count("<details>") != report.count("</details>"):
-        errors.append("report_markdown 中 <details> 与 </details> 数量不一致")
-    elif report.count("<summary>") != report.count("</summary>"):
-        errors.append("report_markdown 中 <summary> 与 </summary> 数量不一致")
-    elif "<details>" not in report or "<summary>" not in report:
-        warnings.append("report_markdown 未使用双层 <details> 结构，建议补充证据底稿")
+    else:
+        errors.extend(_validate_report_structure(report))
 
     summary = result.get("report_summary")
     if not isinstance(summary, str) or not summary.strip():
@@ -310,6 +378,7 @@ def apply_result(doc, result, target_date):
                 "id": max_id,
                 "name": name,
                 "investment_hypothesis": str(nt.get("investment_hypothesis") or ""),
+                "public_conduction": str(nt.get("public_conduction") or ""),
                 "dimensions": {
                     k: (dims_raw.get(k) if dims_raw.get(k) in DIM_VALUES[k] else "未标注")
                     for k in DIM_VALUES
@@ -366,6 +435,8 @@ def apply_result(doc, result, target_date):
                 theme["framework_evidence"] = upd["framework_evidence"]
             if upd.get("investment_hypothesis"):
                 theme["investment_hypothesis"] = upd["investment_hypothesis"]
+            if upd.get("public_conduction"):
+                theme["public_conduction"] = upd["public_conduction"]
             ver = upd.get("verification")
             if isinstance(ver, dict):
                 for k, v in ver.items():

@@ -162,23 +162,34 @@ class TestGather(unittest.TestCase):
     def test_external_url_priority(self):
         theme = make_theme(1, url="https://mofcom.gov.cn/data.html")
         with mock.patch.object(vx, "fetch_url", return_value="<p>官方正文</p>") as m:
-            snippet, label = vx.gather(theme, "条件")
+            snippet, label, strong = vx.gather(theme, "条件")
         self.assertIn("官方正文", snippet)
         self.assertIn("官方页面", label)
+        self.assertTrue(strong)
         m.assert_called_once()
 
-    def test_bad_scheme_falls_back_to_search(self):
+    def test_bad_scheme_does_not_auto_verify(self):
         theme = make_theme(1, url="javascript:alert(1)")
         with mock.patch.object(vx, "fetch_url", return_value=None):
-            snippet, label = vx.gather(theme, "条件")
+            snippet, label, strong = vx.gather(theme, "条件")
         self.assertEqual(snippet, "")
         self.assertEqual(label, "")
+        self.assertFalse(strong)
 
-    def test_url_failure_falls_back_to_search(self):
+    def test_official_url_failure_does_not_fall_back_to_search(self):
         theme = make_theme(1, url="https://mofcom.gov.cn/data.html")
-        with mock.patch.object(vx, "fetch_url", side_effect=[Exception("boom"), None]):
-            snippet, label = vx.gather(theme, "条件")
+        with mock.patch.object(vx, "fetch_url", side_effect=Exception("boom")):
+            snippet, label, strong = vx.gather(theme, "条件")
         self.assertEqual(snippet, "")
+        self.assertFalse(strong)
+
+    def test_non_official_url_is_weak_evidence(self):
+        theme = make_theme(1, url="https://example.com/data.html")
+        with mock.patch.object(vx, "fetch_url", return_value="<p>正文</p>"):
+            snippet, label, strong = vx.gather(theme, "条件")
+        self.assertEqual(snippet, "")
+        self.assertIn("非官方", label)
+        self.assertFalse(strong)
 
 
 class TestJudge(unittest.TestCase):
@@ -232,6 +243,27 @@ class TestApplyVerdict(unittest.TestCase):
             doc, t,
             {"conclusion": "uncertain", "evidence": "", "reason": "资料不足"},
             "2026-08-16", "联网检索")
+        self.assertEqual(changed, 0)
+        self.assertEqual(t["verification"]["status"], "待复核")
+        self.assertEqual(t["lifecycle"][-1]["type"], "update")
+
+
+class TestApplyReviewPending(unittest.TestCase):
+    def test_tracking_becomes_review(self):
+        doc = make_doc([make_theme(1, status="跟踪中")])
+        t = doc["themes"][0]
+        changed = vx.apply_review_pending(
+            doc, t, "2026-08-16", "仅有搜索摘要", "联网检索[bing]")
+        self.assertEqual(changed, 1)
+        self.assertEqual(t["verification"]["status"], "待复核")
+        self.assertEqual(t["verification"]["last_verify_attempt"], "2026-08-16")
+        self.assertEqual(t["lifecycle"][-1]["type"], "status_change")
+
+    def test_already_review_keeps_status(self):
+        doc = make_doc([make_theme(1, status="待复核")])
+        t = doc["themes"][0]
+        changed = vx.apply_review_pending(
+            doc, t, "2026-08-16", "仍无法确认", "")
         self.assertEqual(changed, 0)
         self.assertEqual(t["verification"]["status"], "待复核")
         self.assertEqual(t["lifecycle"][-1]["type"], "update")

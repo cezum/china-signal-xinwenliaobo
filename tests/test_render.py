@@ -120,7 +120,7 @@ class TestRenderDigest(unittest.TestCase):
 class TestRenderTracking(unittest.TestCase):
     def test_short_logic_prefers_arrow_right_side(self):
         theme = make_theme(1)
-        theme["investment_hypothesis"] = "政策背景描述 → 城市防洪排涝工程、监测预警装备、应急产业订单加速"
+        theme["public_conduction"] = "城市防洪排涝工程、监测预警装备、应急产业实物工作量"
         self.assertTrue(rt.short_logic(theme).startswith("城市防洪排涝工程"))
 
     def test_short_logic_falls_back_to_verification_condition(self):
@@ -128,6 +128,14 @@ class TestRenderTracking(unittest.TestCase):
         theme["investment_hypothesis"] = ""
         theme["verification"]["condition"] = "应急管理部发布防洪排涝专项方案"
         self.assertEqual(rt.short_logic(theme), "应急管理部发布防洪排涝专项方案")
+
+    def test_public_conduction_does_not_expose_investment_hypothesis(self):
+        theme = make_theme(1)
+        theme["investment_hypothesis"] = "内部假设 → 某产业链订单加速"
+        theme["public_conduction"] = "应急管理部发布防灾减灾专项实施方案"
+        text = rt.render_tracking(make_doc(themes=[theme]))
+        self.assertNotIn("订单加速", text)
+        self.assertIn("应急管理部发布防灾减灾专项实施方案", text)
 
     def test_wind_maps_tracking_open_to_go(self):
         theme = make_theme(1)

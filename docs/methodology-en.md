@@ -10,7 +10,7 @@ We deliberately do **not** try to cover every item. Each day we extract 3-4 sign
 
 1. Has a policy carrier (meeting, document, leadership statement, ministry plan)
 2. Carries new information (NEW or PROGRESS; repeated filler is rejected)
-3. Can be turned into a one-line **investment hypothesis** ("X gets policy support → orders/data accelerate for industry Y")
+3. Can be turned into a one-line **validation hypothesis** ("X gets policy support → a concrete, observable industry checkpoint Y")
 4. Is verifiable within 1-3 months
 5. Adds information beyond what the tracking table already knows
 
@@ -48,7 +48,7 @@ Lifecycle events are append-only. This is what makes the analysis an auditable a
 
 ## Investment hypothesis verification (not event check-ins)
 
-The end goal is "which industry is gaining momentum." Every theme therefore carries a one-line investment hypothesis, and its verification condition is an event or data point that can **confirm or falsify that hypothesis** — not a ceremonial milestone.
+The end goal is "which policy signal is gaining momentum." Every theme therefore carries a one-line validation hypothesis, and its verification condition is an event or data point that can **confirm or falsify that hypothesis** — not a ceremonial milestone.
 
 Two verification types are forbidden:
 

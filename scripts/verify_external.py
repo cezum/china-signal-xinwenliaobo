@@ -12,9 +12,9 @@
 - verification.date 已到期且 status ∈ {跟踪中, 延迟验证}
 - 3 天内已查证过（verification.last_verify_attempt）的跳过，--force 可忽略
 
-查证方式（每主题二选一，先 URL 后搜索）：
-1. verification.external_url（官方发布页）→ 直接抓取该页正文；
-2. 否则用搜索引擎检索"主题名 + 验证条件"→ 取摘要。
+查证方式（强证据优先）：
+1. verification.external_url 且域名属于官方来源后缀 → 直接抓取该页正文；
+2. 否则搜索引擎只作为“待复核”的辅助线索，不直接触发已验证/信号衰减。
    默认渠道顺序 bing,ddg（Bing 国内直连），可用环境变量
    VERIFY_SEARCH 覆盖，如 VERIFY_SEARCH="sogou" 或 "bing,ddg"。
 
@@ -48,6 +48,13 @@ TRACKING_JSON = os.path.join(ROOT, "data", "tracking_table.json")
 MAX_SNIPPET_CHARS = 6000
 CONCLUSIONS = {"verified", "not_verified", "uncertain"}
 RETRY_WINDOW_DAYS = 3
+OFFICIAL_HOST_SUFFIXES = (
+    "gov.cn",
+    "people.com.cn",
+    "news.cn",
+    "xinhuanet.com",
+    "cctv.com",
+)
 
 JUDGE_SYSTEM = (
     "你是事实核查助手。请判断下面这条\"验证条件\"是否已经被所附资料证实。\n"
@@ -172,28 +179,49 @@ def search(query):
     return "", ""
 
 
+def _is_official_url(url):
+    """判断 URL 是否为可自动采信的官方来源域名。"""
+    try:
+        host = (urllib.parse.urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return any(host == suffix or host.endswith("." + suffix)
+               for suffix in OFFICIAL_HOST_SUFFIXES)
+
+
 def gather(theme, condition):
-    """返回 (snippet, source_label)；无法获取时返回 ("", "")。"""
+    """返回 (snippet, source_label, strong)。
+
+    strong=True 表示资料来自官方 URL 且正文抓取成功，才允许后续
+    LLM 判定直接落为“已验证/信号衰减”；搜索摘要等弱证据只供
+    “待复核”阶段留痕，不直接改变终态。
+    """
     v = theme.get("verification") or {}
     url = str(v.get("external_url") or "").strip()
     if url:
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme in ("http", "https"):
+            if not _is_official_url(url):
+                print(f"    [gather] external_url 非官方来源，不作为自动终态证据：{url}")
+                return "", f"非官方页面 {url}", False
             try:
                 raw = fetch_url(url)
                 if raw:
                     text = strip_tags(raw)
                     if text:
-                        return text[:MAX_SNIPPET_CHARS], f"官方页面 {url}"
+                        return text[:MAX_SNIPPET_CHARS], f"官方页面 {url}", True
             except Exception as e:
-                print(f"    [gather] URL 抓取失败，回退搜索：{e}")
+                print(f"    [gather] 官方 URL 抓取失败：{e}")
+            print(f"    [gather] 官方 URL 未取得有效正文，转待复核：{url}")
+            return "", f"官方页面抓取失败 {url}", False
         else:
-            print(f"    [gather] external_url 协议非法（{parsed.scheme or '空'}），回退搜索")
+            print(f"    [gather] external_url 协议非法（{parsed.scheme or '空'}），转待复核")
+            return "", "", False
     query = f"{theme.get('name', '')} {condition}".strip()[:200]
     results, channel = search(query)
     if results:
-        return results, f"联网检索[{channel}]（{query[:80]}）"
-    return "", ""
+        return results, f"联网检索[{channel}]（{query[:80]}）", False
+    return "", "", False
 
 
 # ---------------------------------------------------------------- 判定与流转
@@ -241,6 +269,35 @@ def apply_verdict(doc, theme, verdict, today, source_label):
     return changed
 
 
+def apply_review_pending(doc, theme, today, reason, source_label):
+    """弱证据/无证据时，不自动终态，只转到“待复核”并留痕。"""
+    v = theme.setdefault("verification", {})
+    old = v.get("status", "跟踪中")
+    v["last_verify_attempt"] = today
+    label = f"（查证源：{source_label}）" if source_label else ""
+
+    if old in ("已验证", "信号衰减", "归档"):
+        return 0
+    if old == "待复核":
+        ev_type, action, changed = "update", f"外部查证：仍待复核（{reason}）", 0
+    else:
+        v["status"] = "待复核"
+        ev_type, action, changed = (
+            "status_change",
+            f"外部查证证据不足：{old} → 待复核",
+            1,
+        )
+
+    theme.setdefault("lifecycle", []).append({
+        "date": today,
+        "type": ev_type,
+        "action": action,
+        "evidence": label,
+        "reason": reason,
+    })
+    return changed
+
+
 # ---------------------------------------------------------------- 主流程
 
 def main():
@@ -267,9 +324,16 @@ def main():
         condition = str(v.get("condition") or "").strip()
         print(f"\n[verify] 主题{theme['id']} {theme.get('name', '')}")
         print(f"        条件：{condition[:80]}")
-        snippet, source = gather(theme, condition)
+        snippet, source, strong = gather(theme, condition)
         if not snippet:
-            print("        未获取到外部资料，保持原状态")
+            changed += apply_review_pending(
+                doc, theme, args.date, "未获取到可自动采信的外部资料", source)
+            print("        未获取到强证据，已转待复核")
+            continue
+        if not strong:
+            changed += apply_review_pending(
+                doc, theme, args.date, "仅有搜索摘要/非官方来源，不足以自动终态", source)
+            print("        证据不足，仅转待复核，不自动改终态")
             continue
         try:
             verdict = judge(condition, snippet)

@@ -20,12 +20,12 @@ Each day the pipeline:
 
 1. Picks the **3-4 items** that actually carry policy (skipping obituaries, disasters, fluff)
 2. Scores each signal: *who is speaking, is it new, does it have a concrete hook, when can we verify*
-3. Writes a one-line **investment hypothesis**, e.g. "nuclear enters the Security frame → faster approvals → orders for nuclear equipment"
+3. Writes a one-line **internal validation hypothesis**, e.g. "nuclear enters the Security frame → approval and construction pace becomes the next observable signal"
 4. Tracks it in a rolling table and **verifies it later** — did the hypothesis hold, or die?
 
 The question we answer is not "what happened today". It's **"which policy promises are quietly accelerating, being deprioritized, reframed, or silently walked back?"**
 
-The public output is deviation detection across three layers: **plan → narrative → reality**. Investment hypotheses stay in the system as internal, falsifiable validation metrics — they are not the public product and are not investment advice.
+The public output is deviation detection across three layers: **plan → narrative → reality**. Internal validation hypotheses stay in the system as falsifiable metrics — they are not shown in the public summary layer and are not investment advice.
 
 ## What you get
 
@@ -35,7 +35,7 @@ A daily Markdown report + a structured tracking table (JSON + rendered). A real 
 |---|-------|-------|---------|-------------|--------|-------|--------------|
 | 30 | Nuclear construction scale ranks No.1 globally | B | PROGRESS | S1 | Open | Security | New project starts (2026-11-12) |
 
-> Hypothesis: nuclear enters the Security frame (top priority) → approval/construction pace decides order flow for nuclear equipment, construction and operators.
+> Policy-conduction logic: nuclear enters the Security frame (top priority) → approval and construction pace becomes the next observable real-workload checkpoint.
 
 Full sample: [`reports/2026-08-12.md`](reports/2026-08-12.md)
 
@@ -49,7 +49,7 @@ Full sample: [`reports/2026-08-12.md`](reports/2026-08-12.md)
 
 ```mermaid
 flowchart TD
-    A["Fetch daily transcript"] --> B["LLM analysis: 3-4 signals, four dimensions, investment hypotheses"]
+    A["Fetch daily transcript"] --> B["LLM analysis: 3-4 signals, four dimensions, internal validation hypotheses"]
     B --> C["Update tracking table: lifecycle events + framework evidence"]
     C --> D["Render tracking table + write daily report"]
     D --> E["Due hypothesis checks"]
@@ -58,7 +58,7 @@ flowchart TD
     G --> A
 ```
 
-The daily loop feeds the tracking table; verification results feed back into theme status; confirmed hypotheses graduate into investment leads — then the loop repeats.
+The daily loop feeds the tracking table; verification results feed back into theme status; confirmed hypotheses graduate into trackable leads — then the loop repeats.
 
 ## Methodology (the important, slightly boring part)
 
