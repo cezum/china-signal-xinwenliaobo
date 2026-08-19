@@ -1,4 +1,4 @@
-# China Signal-Xinwenliaobo
+# China Signal · Xinwen Lianbo
 
 > 看新闻联播，跟踪中国产业政策的叙事偏离
 

@@ -190,7 +190,7 @@ def parse_json(content):
 
 
 REPORT_SECTIONS = [
-    ("标题", re.compile(r"^#\s*新闻联播政策信号日报\s*\|\s*\d{4}-\d{2}-\d{2}\s*$", re.MULTILINE)),
+    ("标题", re.compile(r"^#\s*新闻联播风向标\s*\|\s*\d{4}-\d{2}-\d{2}\s*$", re.MULTILINE)),
     ("今日要点", re.compile(r"^##\s*今日要点\s*$", re.MULTILINE)),
     ("读报指南", re.compile(r"^##\s*读报指南", re.MULTILINE)),
     ("信号详析", re.compile(r"^##\s*信号详析\s*$", re.MULTILINE)),
@@ -537,7 +537,7 @@ def notify(report_path, summary=None):
         if not text:
             text = _strip_html(md)
         text = text[:1200]
-        title = f"新闻联播政策信号日报 {os.path.basename(report_path)[:10]}"
+        title = f"新闻联播风向标 {os.path.basename(report_path)[:10]}"
 
         if notify_type == "serverchan":
             body = urllib.parse.urlencode({"title": title, "desp": text}).encode("utf-8")
@@ -633,7 +633,7 @@ def main():
             ],
             "expiry_check": "mock：无检验点到期",
             "report_markdown": (
-                f"# 新闻联播政策信号日报 | {target_date}\n\n"
+                f"# 新闻联播风向标 | {target_date}\n\n"
                 "## 今日要点\n\n"
                 "mock 测试要点：这是当日最值得注意的变化。\n\n"
                 "## 读报指南（怎么读这份报告）\n\n"

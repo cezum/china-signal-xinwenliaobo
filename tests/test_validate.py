@@ -44,7 +44,7 @@ def base_result(signals=None):
         "signals": signals if signals is not None else [valid_new_signal()],
         "expiry_check": "无到期检验点",
         "report_markdown": (
-            "# 新闻联播政策信号日报 | 2026-08-17\n\n"
+            "# 新闻联播风向标 | 2026-08-17\n\n"
             "## 今日要点\n\n测试要点。\n\n"
             "## 读报指南（怎么读这份报告）\n\n口径表。\n\n"
             "## 信号详析\n\n"
@@ -170,7 +170,7 @@ class TestValidate(unittest.TestCase):
 class TestNotifyHelpers(unittest.TestCase):
     def test_build_notify_text_uses_today_key_points(self):
         md = (
-            "# 新闻联播政策信号日报 | 2026-08-17\n\n"
+            "# 新闻联播风向标 | 2026-08-17\n\n"
             "## 今日要点\n\n今日最重要的变化。\n\n"
             "## 读报指南（怎么读这份报告）\n\n口径表。\n\n"
             "## 信号详析\n\n"
@@ -186,7 +186,7 @@ class TestNotifyHelpers(unittest.TestCase):
             "## 验证打卡\n\n- 无到期检验点。\n- 异常缺席：无\n"
         )
         text = rd.build_notify_text(md)
-        self.assertIn("新闻联播政策信号日报", text)
+        self.assertIn("新闻联播风向标", text)
         self.assertIn("今日最重要的变化", text)
         self.assertNotIn("示例主题", text)
         self.assertNotIn("验证打卡", text)
