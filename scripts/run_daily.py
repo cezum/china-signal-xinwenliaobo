@@ -189,71 +189,46 @@ def parse_json(content):
     return json.loads(text)
 
 
-def _validate_report_structure(report):
-    """校验日报双层 HTML 结构：闭合、嵌套顺序、每卡配对、summary 固定文案。"""
+REPORT_SECTIONS = [
+    ("标题", re.compile(r"^#\s*新闻联播政策信号日报\s*\|\s*\d{4}-\d{2}-\d{2}\s*$", re.MULTILINE)),
+    ("今日要点", re.compile(r"^##\s*今日要点\s*$", re.MULTILINE)),
+    ("读报指南", re.compile(r"^##\s*读报指南", re.MULTILINE)),
+    ("信号详析", re.compile(r"^##\s*信号详析\s*$", re.MULTILINE)),
+    ("信号跟踪表", re.compile(r"^##\s*信号跟踪表\s*$", re.MULTILINE)),
+    ("验证打卡", re.compile(r"^##\s*验证打卡\s*$", re.MULTILINE)),
+]
+
+SIGNAL_FIELD_LABELS = [
+    "联播原文", "趋势判断", "投资假设",
+    "层级/首次性/具体性/验证窗口", "政策窗口", "叙事框架", "待验证",
+]
+
+
+def _validate_report_structure(report, num_signals=0):
+    """校验日报"信号详析式"结构：必要小节齐全且顺序正确、信号块字段完整。"""
     errors = []
-    speed = re.search(
-        r"^##\s*🎯\s*今日速览\s*$(.*?)"
-        r"(?=^##\s*📌\s*风险与验证打卡\s*$|^##\s*⚠️\s*风险提示\s*$|\Z)",
-        report,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    cards = re.findall(r"^####\s*\d+\.\s*\S", speed.group(1), flags=re.MULTILINE) if speed else []
-
-    details_open = report.count("<details>")
-    details_close = report.count("</details>")
-    summary_open = report.count("<summary>")
-    summary_close = report.count("</summary>")
-
-    if details_open != details_close:
-        errors.append(
-            f"report_markdown 中 <details> 与 </details> 数量不一致"
-            f"（{details_open} 对 {details_close}）")
-    if summary_open != summary_close:
-        errors.append(
-            f"report_markdown 中 <summary> 与 </summary> 数量不一致"
-            f"（{summary_open} 对 {summary_close}）")
-    if details_open == 0 or summary_open == 0:
-        errors.append("report_markdown 必须使用双层 <details> 结构：每个速览卡片后都要有证据与方法底稿")
-    if summary_open != details_open:
-        errors.append(
-            f"report_markdown 中 <details> 与 <summary> 数量不一致"
-            f"（{details_open} 个 details，{summary_open} 个 summary）")
-    if cards and len(cards) != details_open:
-        errors.append(
-            f"report_markdown 今日速览有 {len(cards)} 张卡片，"
-            f"但只有 {details_open} 个 <details>，每张卡片后必须对应一个折叠底稿")
-
-    for i, text in enumerate(re.findall(r"<summary>(.*?)</summary>", report, re.DOTALL), 1):
-        if text.strip() != "📂 证据与方法底稿":
+    positions = []
+    for name, pat in REPORT_SECTIONS:
+        m = pat.search(report)
+        if not m:
             errors.append(
-                f"report_markdown 第 {i} 个 <summary> 内容必须固定为"
-                f"「📂 证据与方法底稿」")
+                f"report_markdown 缺少 {name} 小节"
+                "（要求顺序：标题 → 今日要点 → 读报指南 → 信号详析 → 信号跟踪表 → 验证打卡 → 页脚）")
+            continue
+        positions.append((name, m.start()))
+    for (prev_name, prev_pos), (name, pos) in zip(positions, positions[1:]):
+        if prev_pos > pos:
+            errors.append(f"report_markdown 小节顺序错误：{prev_name} 必须在 {name} 之前")
 
-    stack = []
-    tokens = re.findall(r"</?details>|</?summary>", report, flags=re.IGNORECASE)
-    for token in tokens:
-        tag = token.lower()
-        if tag == "<details>":
-            stack.append("details")
-        elif tag == "<summary>":
-            if not stack or stack[-1] != "details":
-                errors.append("report_markdown 中 <summary> 必须位于 <details> 内")
-                break
-            stack.append("summary")
-        elif tag == "</summary>":
-            if not stack or stack[-1] != "summary":
-                errors.append("report_markdown 中 </summary> 缺少对应的 <summary>")
-                break
-            stack.pop()
-        elif tag == "</details>":
-            if not stack or stack[-1] != "details":
-                errors.append("report_markdown 中 </details> 缺少对应的 <details>")
-                break
-            stack.pop()
-    else:
-        if stack:
-            errors.append("report_markdown 中 HTML 标签未正确闭合或嵌套")
+    blocks = re.split(r"(?=^###\s*信号)", report, flags=re.MULTILINE)
+    signal_blocks = [b for b in blocks if re.match(r"^###\s*信号", b, flags=re.MULTILINE)]
+    if num_signals > 0 and not signal_blocks:
+        errors.append("report_markdown 的 信号详析 中必须有至少一个 ### 信号 块")
+    for i, block in enumerate(signal_blocks, 1):
+        missing = [label for label in SIGNAL_FIELD_LABELS
+                   if f"**{label}：" not in block and f"**{label}:**" not in block]
+        if missing:
+            errors.append(f"信号详析第 {i} 个信号块缺少字段：{', '.join(missing)}")
     return errors
 
 
@@ -342,11 +317,9 @@ def validate_llm_result(result):
     if not isinstance(report, str) or not report.strip():
         errors.append("report_markdown 缺失或为空")
     else:
-        errors.extend(_validate_report_structure(report))
+        num_signals = len(signals) if isinstance(signals, list) else 0
+        errors.extend(_validate_report_structure(report, num_signals))
 
-    summary = result.get("report_summary")
-    if not isinstance(summary, str) or not summary.strip():
-        warnings.append("report_summary 缺失或为空，推送将回退解析日报正文")
     if not isinstance(result.get("expiry_check"), str):
         warnings.append("expiry_check 缺失，视为无到期检验点")
     return errors, warnings
@@ -513,33 +486,34 @@ def _strip_html(text):
     return text.strip()
 
 
+def _normalize_summary(text):
+    """把推送摘要统一成逐条三行格式，不依赖 LLM 是否自觉换行。"""
+    text = _strip_html(text)
+    text = re.sub(r"\s*信号点\s*[：:]\s*", "\n信号点：", text)
+    text = re.sub(r"\s*政策含义\s*[：:]\s*", "\n政策含义：", text)
+    text = re.sub(r"\s*接下来盯\s*[：:]\s*", "\n接下来盯：", text)
+    blocks = [b.strip() for b in re.split(r"(?=信号点[：:])", text) if b.strip()]
+    return "\n\n".join(blocks)
+
+
+def _section_text(md, heading):
+    """提取 `## heading` 小节正文（到下一小节、页脚分隔线或文末）。"""
+    m = re.search(rf"^##\s*{heading}\s*(.*?)(?=^##\s|\n---|\Z)",
+                  md, flags=re.MULTILINE | re.DOTALL)
+    return m.group(1).strip() if m else ""
+
+
 def build_notify_text(md):
-    """从日报 Markdown 中提取适合推送的纯文本摘要。"""
+    """提取推送文本：标题 + "今日要点"段落（推送内容直接用今日要点）。"""
     parts = []
 
     title = re.search(r"^#\s+.*$", md, flags=re.M)
     if title:
         parts.append(title.group(0).strip())
 
-    one_line = re.search(r">\s*今日一句[：:]\s*(.*)", md)
-    if one_line:
-        parts.append("今日一句：" + one_line.group(1).strip())
-
-    cards = re.search(
-        r"##\s*🎯\s*今日速览(.*?)(?=\n##\s*📌\s*风险与验证打卡|\n##\s*⚠️\s*风险提示)",
-        md, flags=re.S)
-    if cards:
-        body = _strip_html(cards.group(1))
-        if body:
-            parts.append("🎯 今日速览\n" + body)
-
-    verify = re.search(
-        r"##\s*📌\s*风险与验证打卡(.*?)(?=\n##\s*⚠️\s*风险提示|\Z)",
-        md, flags=re.S)
-    if verify:
-        body = _strip_html(verify.group(1))
-        if body:
-            parts.append("📌 风险与验证打卡\n" + body)
+    key = _section_text(md, "今日要点")
+    if key:
+        parts.append(_strip_html(key))
 
     return "\n\n".join(parts) if parts else _strip_html(md)
 
@@ -557,9 +531,13 @@ def notify(report_path, summary=None):
             return
 
         md = read_text(report_path)
-        text = (_strip_html(summary or "") if summary else "") or build_notify_text(md)
+        text = build_notify_text(md)
+        if not text and summary:
+            text = _normalize_summary(summary)
+        if not text:
+            text = _strip_html(md)
         text = text[:1200]
-        title = f"联播风向标 {os.path.basename(report_path)[:10]}"
+        title = f"新闻联播政策信号日报 {os.path.basename(report_path)[:10]}"
 
         if notify_type == "serverchan":
             body = urllib.parse.urlencode({"title": title, "desp": text}).encode("utf-8")
@@ -654,36 +632,26 @@ def main():
                 }
             ],
             "expiry_check": "mock：无检验点到期",
-            "report_summary": (
-                f"联播风向标 | {target_date}\n"
-                "今日一句：mock 测试信号。\n"
-                "🎯 今日速览：示例测试主题，测试假设 → 测试产业链。\n"
-                "📌 验证打卡：暂无。"
-            ),
             "report_markdown": (
-                f"# 联播风向标 | {target_date}\n\n"
-                "> 今日一句：mock 测试信号。\n\n"
-                "## 🎯 今日速览\n\n"
-                "#### 1. 🆕 示例测试主题\n\n"
-                "- **联播怎么说：** mock 联播事件。\n"
-                "- **行业传导：** 测试产业链。\n"
-                "- **接下来盯：** 联播报道 mock 检验条件。\n"
-                "- **📈 叙事：卷发展 · 🆕 新建主题**\n\n"
-                "<details>\n"
-                "<summary>📂 证据与方法底稿</summary>\n\n"
-                "- **联播原文：** mock 证据\n"
-                "- **维度：** C / NEW / S2 / 接近 / MID\n"
-                "- **叙事框架：** 发展框架（mock 判定依据）\n"
-                "- **投资假设：** 测试假设 → 测试产业链\n"
-                "- **验证条件：** 联播报道 mock 检验条件\n"
-                "- **验证日期：** 2026-12-31\n"
-                "- **十五五映射：** 第五篇 第16章（有效投资）\n\n"
-                "</details>\n\n"
-                "---\n\n"
-                "## 📌 风险与验证打卡\n\n"
-                "- ✅ 无到期验证\n\n"
-                "## ⚠️ 风险提示\n\n"
-                "- mock 风险提示。\n"
+                f"# 新闻联播政策信号日报 | {target_date}\n\n"
+                "## 今日要点\n\n"
+                "mock 测试要点：这是当日最值得注意的变化。\n\n"
+                "## 读报指南（怎么读这份报告）\n\n"
+                "口径说明表。\n\n"
+                "## 信号详析\n\n"
+                "### 信号一：示例测试主题\n\n"
+                "- **联播原文：** 第1条——mock 联播事件。\n"
+                "- **趋势判断：** mock 测试信号处于测试阶段。\n"
+                "- **投资假设：** 测试假设 → 测试产业链。\n"
+                "- **层级/首次性/具体性/验证窗口：** C / NEW / S2 / MID\n"
+                "- **政策窗口：** 接近。mock 理由。\n"
+                "- **叙事框架：** 发展框架。判定依据：mock 判定依据。\n"
+                "- **待验证：** 联播报道 mock 检验条件。已纳入跟踪表主题1（首次纳入）。\n\n"
+                "## 信号跟踪表\n\n"
+                "mock 跟踪表。\n\n"
+                "## 验证打卡\n\n"
+                "- 无到期检验点。\n"
+                "- 异常缺席：无\n"
             ),
         }
     else:

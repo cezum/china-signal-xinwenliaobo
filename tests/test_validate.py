@@ -43,11 +43,21 @@ def base_result(signals=None):
     return {
         "signals": signals if signals is not None else [valid_new_signal()],
         "expiry_check": "无到期检验点",
-        "report_summary": "今日一句：测试。\n今日速览：测试。",
         "report_markdown": (
-            "# 联播风向标 | 2026-08-17\n\n"
-            "## 🎯 今日速览\n\n"
-            "<details>\n<summary>📂 证据与方法底稿</summary>\n正文\n</details>\n"
+            "# 新闻联播政策信号日报 | 2026-08-17\n\n"
+            "## 今日要点\n\n测试要点。\n\n"
+            "## 读报指南（怎么读这份报告）\n\n口径表。\n\n"
+            "## 信号详析\n\n"
+            "### 信号一：测试主题\n\n"
+            "- **联播原文：** 第1条——测试。\n"
+            "- **趋势判断：** 测试。\n"
+            "- **投资假设：** 测试。\n"
+            "- **层级/首次性/具体性/验证窗口：** A / NEW / S1 / SHORT\n"
+            "- **政策窗口：** 开放。测试。\n"
+            "- **叙事框架：** 发展框架。判定依据：测试。\n"
+            "- **待验证：** 测试。\n\n"
+            "## 信号跟踪表\n\n跟踪表。\n\n"
+            "## 验证打卡\n\n- 无到期检验点。\n- 异常缺席：无\n"
         ),
     }
 
@@ -121,69 +131,69 @@ class TestValidate(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertTrue(any("expiry_check" in w for w in warnings))
 
-    def test_missing_report_summary_is_warning(self):
-        r = base_result(); r.pop("report_summary")
-        errors, warnings = rd.validate_llm_result(r)
+    def test_missing_section_is_error(self):
+        r = base_result()
+        r["report_markdown"] = r["report_markdown"].replace("## 验证打卡\n\n- 无到期检验点。\n- 异常缺席：无\n", "")
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("验证打卡" in e for e in errors))
+
+    def test_section_order_error(self):
+        r = base_result()
+        r["report_markdown"] = r["report_markdown"].replace(
+            "## 今日要点\n\n测试要点。\n\n## 读报指南",
+            "## 读报指南\n\n口径表。\n\n## 今日要点\n\n测试要点。")
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("顺序" in e for e in errors))
+
+    def test_signal_block_missing_field_is_error(self):
+        r = base_result()
+        r["report_markdown"] = r["report_markdown"].replace(
+            "- **待验证：** 测试。\n", "")
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("待验证" in e for e in errors))
+
+    def test_no_signal_block_when_signals_present_is_error(self):
+        r = base_result()
+        r["report_markdown"] = r["report_markdown"].replace(
+            "### 信号一：测试主题\n\n", "")
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("至少一个" in e for e in errors))
+
+    def test_empty_signals_allows_no_signal_block(self):
+        r = base_result(signals=[])
+        r["report_markdown"] = r["report_markdown"].replace(
+            "### 信号一：测试主题\n\n", "")
+        errors, _ = rd.validate_llm_result(r)
         self.assertEqual(errors, [])
-        self.assertTrue(any("report_summary" in w for w in warnings))
-
-    def test_unclosed_details_is_error(self):
-        r = base_result()
-        r["report_markdown"] = "<details><summary>标题</summary>正文"
-        errors, _ = rd.validate_llm_result(r)
-        self.assertTrue(any("details" in e for e in errors))
-
-    def test_card_without_details_is_error(self):
-        r = base_result()
-        r["report_markdown"] = (
-            "# 联播风向标 | 2026-08-17\n\n"
-            "## 🎯 今日速览\n\n"
-            "#### 1. 测试主题\n\n"
-            "- **联播怎么说：** 测试\n"
-        )
-        errors, _ = rd.validate_llm_result(r)
-        self.assertTrue(any("卡片" in e for e in errors))
-
-    def test_summary_must_be_fixed_text(self):
-        r = base_result()
-        r["report_markdown"] = (
-            "# 联播风向标 | 2026-08-17\n\n"
-            "## 🎯 今日速览\n\n"
-            "<details><summary>证据底稿</summary>正文</details>\n"
-        )
-        errors, _ = rd.validate_llm_result(r)
-        self.assertTrue(any("必须固定" in e for e in errors))
-
-    def test_summary_outside_details_is_error(self):
-        r = base_result()
-        r["report_markdown"] = (
-            "<summary>📂 证据与方法底稿</summary>"
-            "<details>正文</details>"
-        )
-        errors, _ = rd.validate_llm_result(r)
-        self.assertTrue(any("必须位于" in e for e in errors))
 
 
 class TestNotifyHelpers(unittest.TestCase):
-    def test_build_notify_text_skips_details(self):
+    def test_build_notify_text_uses_today_key_points(self):
         md = (
-            "# 联播风向标 | 2026-08-17\n\n"
-            "> 今日一句：测试信号。\n\n"
-            "## 🎯 今日速览\n\n"
-            "#### 1. 示例主题\n\n"
-            "- **联播怎么说：** 联播报道。\n"
-            "- **行业传导：** 测试产业链。\n"
-            "- **接下来盯：** 测试方案。\n\n"
-            "<details>\n<summary>证据</summary>\n不要推送这段\n</details>\n\n"
-            "## 📌 风险与验证打卡\n\n- ✅ 无\n\n"
-            "## ⚠️ 风险提示\n\n- 风险\n"
+            "# 新闻联播政策信号日报 | 2026-08-17\n\n"
+            "## 今日要点\n\n今日最重要的变化。\n\n"
+            "## 读报指南（怎么读这份报告）\n\n口径表。\n\n"
+            "## 信号详析\n\n"
+            "### 信号一：示例主题\n\n"
+            "- **联播原文：** 第1条——联播报道。\n"
+            "- **趋势判断：** 测试。\n"
+            "- **投资假设：** 测试。\n"
+            "- **层级/首次性/具体性/验证窗口：** A / NEW / S1 / SHORT\n"
+            "- **政策窗口：** 开放。\n"
+            "- **叙事框架：** 发展框架。\n"
+            "- **待验证：** 测试。\n\n"
+            "## 信号跟踪表\n\n跟踪表。\n\n"
+            "## 验证打卡\n\n- 无到期检验点。\n- 异常缺席：无\n"
         )
         text = rd.build_notify_text(md)
-        self.assertIn("今日一句", text)
-        self.assertIn("🎯 今日速览", text)
-        self.assertIn("📌 风险与验证打卡", text)
-        self.assertNotIn("不要推送这段", text)
-        self.assertNotIn("<details>", text)
+        self.assertIn("新闻联播政策信号日报", text)
+        self.assertIn("今日最重要的变化", text)
+        self.assertNotIn("示例主题", text)
+        self.assertNotIn("验证打卡", text)
+
+    def test_build_notify_text_falls_back_to_raw(self):
+        md = "纯文本兜底内容"
+        self.assertEqual(rd.build_notify_text(md), md)
 
 
 if __name__ == "__main__":
