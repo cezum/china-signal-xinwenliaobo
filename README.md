@@ -126,9 +126,9 @@ Set the LLM credentials (required for the analysis pipeline):
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
-| `LLM_API_KEY` | yes | — | OpenAI-compatible API key (e.g. DeepSeek) |
-| `LLM_BASE_URL` | no | `https://api.deepseek.com` | Empty value = unset → default is used |
-| `LLM_MODEL` | no | `deepseek-chat` | Empty value = unset → default is used |
+| `LLM_API_KEY` | yes | — | API key from your LLM provider (any OpenAI-compatible endpoint) |
+| `LLM_BASE_URL` | no | `https://api.deepseek.com` | Built-in default — replace with your provider's OpenAI-compatible URL |
+| `LLM_MODEL` | no | `deepseek-chat` | Built-in default — replace with the model name you use |
 | `NOTIFY_TYPE` | no | — | `serverchan` or `wecom` |
 | `NOTIFY_WEBHOOK` | no | — | Webhook URL; scheme must be http/https |
 

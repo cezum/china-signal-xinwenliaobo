@@ -122,9 +122,9 @@ python -m venv .venv            # 可选
 
 | 变量 | 必填 | 默认值 | 说明 |
 |---|---|---|---|
-| `LLM_API_KEY` | 是 | — | OpenAI 兼容接口 key（如 DeepSeek） |
-| `LLM_BASE_URL` | 否 | `https://api.deepseek.com` | 空值视为未设置，自动回退默认 |
-| `LLM_MODEL` | 否 | `deepseek-chat` | 空值视为未设置，自动回退默认 |
+| `LLM_API_KEY` | 是 | — | 你的 LLM 服务商提供的 key（任意 OpenAI 兼容接口） |
+| `LLM_BASE_URL` | 否 | `https://api.deepseek.com` | 代码内置默认；可换成你所用服务商的 OpenAI 兼容地址 |
+| `LLM_MODEL` | 否 | `deepseek-chat` | 代码内置默认；可换成你所用服务商的模型名 |
 | `NOTIFY_TYPE` | 否 | — | `serverchan` 或 `wecom` |
 | `NOTIFY_WEBHOOK` | 否 | — | 推送 webhook 地址；协议必须是 http/https |
 
