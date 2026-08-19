@@ -1,6 +1,6 @@
 # Methodology: Policy Signal Tracking with an Investment-Hypothesis Loop
 
-This document explains the analytical design of the project in plain English. The working language of the analysis itself is Chinese (the source material is Chinese), but the *approach* is language-agnostic and can be applied to any country's official media or policy announcements.
+This document explains the analytical design of the project in plain English. The working language of the analysis itself is Chinese (the source material is Chinese); this document exists for non-Chinese readers.
 
 ## Why Xinwen Lianbo?
 
@@ -61,7 +61,7 @@ Every signal is mapped to a part/chapter of China's 15th Five-Year Plan (publish
 
 ## Outputs
 
-- **Daily report** (Markdown): headline takeaways, per-signal analysis, tracking table delta, lifecycle events, consistency checks, risk notes
+- **Daily report** (Markdown): headline takeaways, per-signal analysis, tracking table delta, lifecycle events, consistency checks, verification check-ins
 - **Tracking table**: one structured record per theme (dimensions, hypothesis, evidence, lifecycle, verification), stored as JSON and rendered to Markdown
 - **Consistency checks**: framework-evidence coverage and suspected-drift reports, generated mechanically
 

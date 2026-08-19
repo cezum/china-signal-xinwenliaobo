@@ -1,4 +1,4 @@
-# 新闻联播政策偏离检测器
+# 新闻联播风向标
 
 [English README](./README.md)
 
@@ -23,7 +23,7 @@
 
 我们回答的不是"今天发生了什么"，而是**"哪些政策承诺在悄悄加码、被搁置、被换框架，或者被静默改口？"**
 
-公开产出是三层偏离检测：**规划 → 叙事 → 现实**。内部验证假设只作为系统自己的可证伪指标保留，不在公开速览层展示，也不构成投资建议。
+公开产出是三层偏离检测：**规划 → 叙事 → 现实**。内部验证假设只作为系统自己的可证伪指标保留，不写进推送摘要，也不构成投资建议。
 
 ## 你能得到什么
 
@@ -70,8 +70,6 @@ flowchart TD
 
 **十五五映射。** 每条信号都定位到纲要的18篇62章里，始终能看到报道背后的大叙事。
 
-*给不关心中国的人：这套方法是语言无关的——换掉新闻源和框架词典，任何国家的官方媒体都能套用。*
-
 ## 文件结构
 
 ```
@@ -82,12 +80,13 @@ flowchart TD
 │   ├── render_tracking_table.py    # 渲染完整跟踪表与自动化摘要
 │   ├── backfill_xwlb.py            # 批量回填历史文字稿
 │   ├── keyword_stats.py            # 零 LLM 词频统计
+│   ├── verify_external.py          # 外部官方源验证：到期检验点联网核验
 │   └── backtest_charts.py          # 零依赖 SVG 曲线图
 ├── data/
 │   ├── tracking_table.json         # 信号跟踪表唯一数据源（结构化）
 │   ├── tracking_table_digest.md    # 自动化用紧凑摘要（渲染产物）
 │   ├── raw/                        # 联播原文（已 gitignore，不入库）
-│   └── backtest_stats/             # 纯统计与图表（可公开）
+│   └── backtest_stats/             # 纯统计 + SVG 曲线图（可公开）
 ├── notes/
 │   └── 如何看懂这份雷达.md          # 人类阅读层：口径、图例、方法与边界
 ├── tracking.md                     # 自动生成的 5 列极简跟踪表
@@ -98,6 +97,7 @@ flowchart TD
 │   └── initial_signal_tracking_table.md   # 完整跟踪表（渲染产物，勿手工编辑）
 ├── docs/
 │   ├── automation_prompt.md        # 公开版 prompt，可粘贴到任意 LLM 自动化任务
+│   ├── methodology-en.md           # 英文方法论说明文档
 │   └── backtest/                   # 历史转向回测方案与模板
 ├── reports/                        # 每日日报（Markdown）
 ├── PROMPT.md                       # run_daily.py 注入 LLM 的系统指令
@@ -107,7 +107,7 @@ flowchart TD
 
 ## 安装步骤
 
-**环境要求：** Python 3.9+（推荐 3.11+）。**零第三方依赖**——全部脚本仅使用 Python 标准库（`requirements.txt` 因此为空）。
+**环境要求：** Python 3.9+（推荐 3.11+）。**零第三方依赖**——全部脚本仅使用 Python 标准库（`requirements.txt` 因此只有注释）。
 
 ```bash
 git clone <你的仓库地址>
@@ -178,12 +178,7 @@ python scripts/backtest_charts.py
 
 - 本仓库自带 CI（`.github/workflows/ci.yml`）：每次 push/PR 自动做语法检查 + 单元测试。
 - 每日定时运行：用 `docs/automation_prompt.md`（面向任意 LLM 调度任务的完整 prompt），或用你自己的 GitHub Actions / cron 驱动 `scripts/run_daily.py`（脚本 docstring 里有完整命令说明）。
-- GitHub Actions 场景：只提交 `data/ reference/ reports/`；`LLM_API_KEY` 配成 **secret**，`LLM_BASE_URL` / `LLM_MODEL` / `NOTIFY_TYPE` 配成 **仓库变量**，`NOTIFY_WEBHOOK` 配成 **secret**。
-
-## 数据源与合规
-
-- 主源：CCTV 央视网；备份：mrxwlb.com（HTTPS 优先）；脚本零第三方依赖（纯标准库）
-- 联播原文版权归 CCTV；**本仓库只含分析成果，不含原文**（`data/raw/` 已 gitignore）
+- GitHub Actions 场景：只提交生成的产物（`data/`、`reference/`、`reports/`、`tracking.md`）；`LLM_API_KEY` 配成 **secret**，`LLM_BASE_URL` / `LLM_MODEL` / `NOTIFY_TYPE` 配成 **仓库变量**，`NOTIFY_WEBHOOK` 配成 **secret**。
 
 ## 免责声明
 

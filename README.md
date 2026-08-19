@@ -1,4 +1,4 @@
-# Xinwen Lianbo Policy Deviation Tracker
+# China Signal-Xinwenliaobo
 
 > 看新闻联播，跟踪中国产业政策的叙事偏离
 
@@ -25,7 +25,7 @@ Each day the pipeline:
 
 The question we answer is not "what happened today". It's **"which policy promises are quietly accelerating, being deprioritized, reframed, or silently walked back?"**
 
-The public output is deviation detection across three layers: **plan → narrative → reality**. Internal validation hypotheses stay in the system as falsifiable metrics — they are not shown in the public summary layer and are not investment advice.
+The public output is deviation detection across three layers: **plan → narrative → reality**. Internal validation hypotheses stay in the system as falsifiable metrics — they are not shown in the push summary and are not investment advice.
 
 ## What you get
 
@@ -72,7 +72,7 @@ The daily loop feeds the tracking table; verification results feed back into the
 
 **15th Five-Year Plan mapping.** Every signal is located in the plan's 18 parts / 62 chapters, so you always see the larger narrative behind the item.
 
-*For non-China watchers: the method is language-agnostic — swap the broadcast source and the frame dictionary, and it works for any country's official media.*
+The full design rationale in English: [`docs/methodology-en.md`](docs/methodology-en.md).
 
 ## Repository structure
 
@@ -84,12 +84,13 @@ The daily loop feeds the tracking table; verification results feed back into the
 │   ├── render_tracking_table.py    # render full tracking table + automation digest
 │   ├── backfill_xwlb.py            # batch backfill historical transcripts
 │   ├── keyword_stats.py            # zero-LLM keyword frequency statistics
+│   ├── verify_external.py          # external-source verification for due checkpoints
 │   └── backtest_charts.py          # zero-dependency SVG charts
 ├── data/
 │   ├── tracking_table.json         # single source of truth (structured)
 │   ├── tracking_table_digest.md    # compact digest for automation (rendered)
 │   ├── raw/                        # transcripts (gitignored, never committed)
-│   └── backtest_stats/             # pure statistics and charts (can be public)
+│   └── backtest_stats/             # pure statistics + SVG charts (public-ready)
 ├── notes/
 │   └── 如何看懂这份雷达.md          # human-readable guide: terms, legends, method, boundaries
 ├── tracking.md                     # auto-generated 5-column compact tracking table
@@ -100,6 +101,7 @@ The daily loop feeds the tracking table; verification results feed back into the
 │   └── initial_signal_tracking_table.md   # full tracking table (rendered, do not edit)
 ├── docs/
 │   ├── automation_prompt.md        # public prompt for plugging into any LLM automation
+│   ├── methodology-en.md           # plain-English methodology explainer
 │   └── backtest/                   # historical-turn backtest plan and templates
 ├── reports/                        # daily reports (Markdown)
 ├── PROMPT.md                       # system prompt injected by run_daily.py
@@ -109,7 +111,7 @@ The daily loop feeds the tracking table; verification results feed back into the
 
 ## Installation
 
-**Requirements:** Python 3.9+ (3.11+ recommended). No third-party dependencies — all scripts use only the Python standard library (`requirements.txt` is empty by design).
+**Requirements:** Python 3.9+ (3.11+ recommended). No third-party dependencies — all scripts use only the Python standard library (`requirements.txt` contains only comments, by design).
 
 ```bash
 git clone <your-repo-url>
@@ -180,12 +182,7 @@ Outputs are pure statistics and SVG charts in `data/backtest_stats/`. Transcript
 
 - This repo ships CI (`.github/workflows/ci.yml`): syntax check + unit tests on every push/PR.
 - For the daily scheduled run, use `docs/automation_prompt.md` — a self-contained prompt for any LLM-driven scheduler — or drive `scripts/run_daily.py` from your own GitHub Actions / cron setup (see the file's docstring for the full command list).
-- In a GitHub Actions setup, commit back only `data/ reference/ reports/`. Configure `LLM_API_KEY` as a **secret**; `LLM_BASE_URL`, `LLM_MODEL`, `NOTIFY_TYPE` as **repo variables**; `NOTIFY_WEBHOOK` as a **secret**.
-
-## Data & compliance
-
-- Sources: CCTV (primary) + mrxwlb.com (fallback mirror, HTTPS-first). Scripts use only the Python standard library.
-- Transcripts are copyrighted by CCTV. **This repo contains analysis only, never transcripts** (`data/raw/` is gitignored).
+- In a GitHub Actions setup, commit back only the generated outputs (`data/`, `reference/`, `reports/`, `tracking.md`). Configure `LLM_API_KEY` as a **secret**; `LLM_BASE_URL`, `LLM_MODEL`, `NOTIFY_TYPE` as **repo variables**; `NOTIFY_WEBHOOK` as a **secret**.
 
 ## Disclaimer
 
