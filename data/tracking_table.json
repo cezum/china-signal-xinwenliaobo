@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "1.2",
-    "generated_at": "2026-08-19",
+    "generated_at": "2026-08-20",
     "source_file": "reference/initial_signal_tracking_table.md (v1) + 8/12-8/17日度更新",
     "data_range": "2026-03-01 至 2026-08-16",
     "headline_total": 1795,
@@ -43,7 +43,10 @@
         44,
         45,
         46,
-        47
+        47,
+        48,
+        49,
+        50
       ]
     },
     {
@@ -640,7 +643,7 @@
     {
       "id": 9,
       "name": "清洁能源产业集群加速发展",
-      "investment_hypothesis": "绿色建材认证推广 → 绿色建材市场需求增长",
+      "investment_hypothesis": "清洁能源获政策倾斜 → 绿色甲醇、SAF产业链订单加速",
       "dimensions": {
         "level": "B",
         "novelty": "PROGRESS",
@@ -696,9 +699,18 @@
           "to": null,
           "evidence": "联播第11条：建筑门窗等6大类72种产品纳入绿色建材认证，获证企业5725家，上半年营收近1300亿元，同比增长超10%",
           "reason": "绿色建材认证推进，产业数据验证"
+        },
+        {
+          "date": "2026-08-20",
+          "type": "update",
+          "action": "进展更新：吉林洮南20万吨绿色甲醇二期项目启动",
+          "from": null,
+          "to": null,
+          "evidence": "联播第5条：吉林洮南20万吨绿色甲醇二期项目启动建设，预计2028年投产，年产20万吨绿色甲醇、1万吨可持续航空燃料",
+          "reason": "清洁能源产业集群持续扩张，绿色甲醇项目落地验证假设"
         }
       ],
-      "framework_evidence": "发展框架：命中'绿色'、'扩大'等词典词"
+      "framework_evidence": "清洁能源、绿色甲醇、可持续航空燃料"
     },
     {
       "id": 10,
@@ -1439,9 +1451,9 @@
         "source": "商务部发布会/央视联播（外部核验）",
         "date": "2026-08-15",
         "grace_period": "+14天",
-        "status": "延迟验证",
+        "status": "已验证",
         "external_url": "https://news.cctv.com/2026/07/25/ARTIP1O2SEVjSmVgCb0JOX7D260725.shtml",
-        "last_verify_attempt": "2026-08-17"
+        "last_verify_attempt": "2026-08-20"
       },
       "category": "内需与投资",
       "lifecycle": [
@@ -1500,6 +1512,13 @@
           "action": "验证日期到期自动流转：跟踪中 → 延迟验证",
           "evidence": "验证日期 2026-08-15（宽限期 +14天）",
           "reason": "到期检查自动触发"
+        },
+        {
+          "date": "2026-08-20",
+          "type": "verify",
+          "action": "外部查证：验证通过（延迟验证 → 已验证）",
+          "evidence": "央视网2026年7月25日报道，商务部最新数据显示，今年以来消费品以旧换新政策累计带动相关商品销售额超过1.25万亿元。（查证源：官方页面 https://news.cctv.com/2026/07/25/ARTIP1O2SEVjSmVgCb0JOX7D260725.shtml）",
+          "reason": "验证日期到期后的外部查证：资料明确提及商务部发布的数据，且销售额超过1.25万亿元，符合验证条件中‘商务部发布下半年消费品以旧换新销售额数据’的要求。"
         }
       ],
       "framework_evidence": "发展框架：命中‘扩大’‘高质量’等词典词；原文‘坚持扩大内需这个战略基点’"
@@ -1819,10 +1838,10 @@
     {
       "id": 29,
       "name": "西部综合立体交通网建设纵深推进",
-      "investment_hypothesis": "西部陆海新通道打通西南出海捷径：通航后货运量与沿线产业布局决定港口、物流与沿线制造业的投资兑现",
+      "investment_hypothesis": "西部交通网建设获政策倾斜 → 沿线基建、物流、产业布局订单加速",
       "dimensions": {
         "level": "A",
-        "novelty": "NEW",
+        "novelty": "PROGRESS",
         "specificity": "S1",
         "policy_window": "开放",
         "verification_window": "SHORT",
@@ -1850,9 +1869,18 @@
           "action": "主题建档（首次纳入跟踪）",
           "evidence": "2026-08-12 联播【新思想引领新征程】专题报道：十五五开局之年西部交通网建设纵深推进——平陆运河启动全线实船试验（9月通航），西部高速公路通达率从95%提升至99%以上，铁路营业里程从5.91万公里增至6.73万公里；到2030年八纵八横高铁主骨架覆盖西部主要城市",
           "reason": "8/12 联播信号，新增跟踪"
+        },
+        {
+          "date": "2026-08-20",
+          "type": "update",
+          "action": "进展更新：淮河入海水道二期工程首个枢纽完工",
+          "from": null,
+          "to": null,
+          "evidence": "联播第5条：淮河入海水道淮阜枢纽主体工程全面完工，可通行两千吨级船舶，形成淮河流域高效出海通道",
+          "reason": "西部综合立体交通网建设持续纵深推进，验证点提前兑现"
         }
       ],
-      "framework_evidence": "2026-08-12 联播第1条：'以大开放促进大开发''纵深推进'→发展词典命中：大开发/纵深推进"
+      "framework_evidence": "纵深推进、高效出海通道"
     },
     {
       "id": 30,
@@ -2294,7 +2322,7 @@
     {
       "id": 39,
       "name": "7月经济数据：工业向新向优，数智产品高增",
-      "investment_hypothesis": "高技术制造业和数智产品高增，反映产业升级趋势，预计带动装备制造、工业机器人、数智产品等产业链需求持续增长。",
+      "investment_hypothesis": "新动能领域获政策倾斜 → 高技术制造业、数智产品产业链订单/数据加速",
       "public_conduction": "政策信号可能传导至装备制造、高技术制造、数智产品等产业，带动实物工作量提升。",
       "dimensions": {
         "level": "B",
@@ -2304,7 +2332,7 @@
         "verification_window": "MID",
         "narrative_framework": "发展框架"
       },
-      "framework_evidence": "命中“新动能”“高质量”“培育”等发展框架词典词；原文“发展向新向优”“数智化转型稳步推进，新兴产业成长加快”体现发展导向。",
+      "framework_evidence": "新动能、高技术制造业、增长",
       "lifecycle": [
         {
           "date": "2026-08-17",
@@ -2330,6 +2358,15 @@
           "to": null,
           "evidence": "联播第6条：1-7月份国民经济总体平稳，规模以上工业增加值同比增长5.3%，装备制造业增加值同比增长9.7%，高技术制造业增加值同比增长13.8%；7月份数智产品制造业增加值同比增长17.3%，工业机器人、机器人减速器等相关智能化产品增长超过20%。",
           "reason": "本次发布7月经济数据，验证了主题39的假设，高技术制造业和数智产品增速延续高增，数据具体，验证窗口明确。"
+        },
+        {
+          "date": "2026-08-20",
+          "type": "update",
+          "action": "进展更新：1-7月新动能贡献率数据发布",
+          "from": null,
+          "to": null,
+          "evidence": "联播第6条：1-7月新动能领域对规上工业增加值增长贡献率五成左右，比上半年提高约3个百分点；集成电路制造、飞机制造、智能设备制造增长明显加快",
+          "reason": "新动能贡献率数据延续并提升，验证假设持续成立"
         }
       ],
       "timeline": [
@@ -2740,41 +2777,161 @@
         "external_url": ""
       },
       "category": "产业政策与科技创新"
+    },
+    {
+      "id": 48,
+      "name": "优质医疗资源下沉与基层医疗卫生体系建设",
+      "investment_hypothesis": "医疗资源下沉获政策倾斜 → 基层医疗设备（影像/心电/检验）、远程诊疗系统、医共体信息化建设订单加速",
+      "public_conduction": "政策信号可能传导至基层医疗基础设施建设、远程医疗信息化平台、医疗设备更新等实物工作量",
+      "dimensions": {
+        "level": "A",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "民生框架"
+      },
+      "framework_evidence": "惠民、覆盖、基层、健康中国",
+      "lifecycle": [
+        {
+          "date": "2026-08-20",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第2条【新思想引领新征程】优质医疗资源下沉惠民：80%县建成资源共享中心、2199个医共体、家庭医生139.1万人",
+          "reason": "总书记亲自擘画健康中国建设，'十五五'关键期基层医疗资源下沉成为鲜明落笔处，量化数据充分"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-20",
+          "event": "联播专题报道：优质医疗资源下沉惠民，80%县建成影像/心电/检验资源共享中心，2199个县域紧密型医共体，家庭医生139.1万人"
+        }
+      ],
+      "outline_mapping": "第十一篇第39章：健康中国",
+      "verification": {
+        "condition": "联播报道基层医疗设备采购、医共体信息化建设或远程诊疗量数据",
+        "source": "联播",
+        "date": "2026-11-20",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
+    },
+    {
+      "id": 49,
+      "name": "人工智能+交通运输典型应用场景创新行动",
+      "investment_hypothesis": "AI+交通获政策倾斜 → 智能驾驶、智慧公路、智能铁路等场景建设订单加速",
+      "public_conduction": "政策信号可能传导至智能交通基础设施、车路协同系统、智慧物流平台等实物工作量",
+      "dimensions": {
+        "level": "C",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "竞争框架"
+      },
+      "framework_evidence": "智能驾驶、智慧公路、智能铁路、智慧民航",
+      "lifecycle": [
+        {
+          "date": "2026-08-20",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第8条国内联播快讯：交通运输部发布第一批41个重点典型场景建设指引",
+          "reason": "AI+交通运输十大方向41个场景指引发布，具体性强，验证窗口明确"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-20",
+          "event": "联播快讯：我国启动'人工智能+交通运输'典型应用场景创新行动，发布第一批41个重点典型场景建设指引"
+        }
+      ],
+      "outline_mapping": "第二篇第7章：基础设施；第四篇第13章：数智赋能",
+      "verification": {
+        "condition": "联播报道智能交通试点项目落地或场景建设进展",
+        "source": "联播",
+        "date": "2026-11-20",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
+    },
+    {
+      "id": 50,
+      "name": "全民医疗保障十五五规划发布",
+      "investment_hypothesis": "医保省级统筹获政策倾斜 → 医保信息化系统、异地结算平台建设订单加速",
+      "public_conduction": "政策信号可能传导至医保信息化系统升级、异地就医结算平台建设等实物工作量",
+      "dimensions": {
+        "level": "C",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "民生框架"
+      },
+      "framework_evidence": "保障、覆盖、医保",
+      "lifecycle": [
+        {
+          "date": "2026-08-20",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第8条国内联播快讯：国家医保局发布《全民医疗保障'十五五'规划》，基本医保参保率保持95%左右，2029年基本实现省级统筹",
+          "reason": "医保十五五规划发布，量化指标明确，省级统筹时间表清晰"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-20",
+          "event": "联播快讯：国家医保局发布《全民医疗保障'十五五'规划》，明确参保率、支付比例、省级统筹时间表"
+        }
+      ],
+      "outline_mapping": "第十二篇第43章：社会保障",
+      "verification": {
+        "condition": "联播报道医保省级统筹进展或医保信息化建设成果",
+        "source": "联播",
+        "date": "2026-11-20",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
     }
   ],
   "stats": {
     "by_level": {
-      "A": 16,
+      "A": 17,
       "B": 25,
-      "C": 6
+      "C": 8
     },
     "by_novelty": {
-      "PROGRESS": 31,
-      "NEW": 16
+      "PROGRESS": 32,
+      "NEW": 18
     },
     "by_specificity": {
-      "S1": 34,
+      "S1": 37,
       "S2": 13
     },
     "by_policy_window": {
-      "开放": 37,
+      "开放": 40,
       "接近": 9,
       "封闭": 1
     },
     "by_verification_window": {
       "SHORT": 13,
-      "MID": 32,
+      "MID": 35,
       "LONG": 2
     },
     "by_narrative_framework": {
       "发展框架": 18,
-      "竞争框架": 8,
-      "民生框架": 11,
+      "竞争框架": 9,
+      "民生框架": 13,
       "安全框架": 10
     },
     "by_category": {
       "规划体系与顶层设计": 3,
-      "产业政策与科技创新": 17,
+      "产业政策与科技创新": 20,
       "改革开放": 4,
       "市场体系建设": 1,
       "民生保障与公共服务": 8,
@@ -2786,6 +2943,6 @@
       "宏观经济与政策": 1,
       "民生与社会治理": 1
     },
-    "total": 47
+    "total": 50
   }
 }
