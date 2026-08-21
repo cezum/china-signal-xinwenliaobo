@@ -3,7 +3,7 @@
 """每日自动化主流程：抓取 → LLM 分析 → 更新跟踪表 → 渲染 → 生成日报 → 可选推送。
 
 用法：
-    python scripts/run_daily.py                      # 默认分析昨日（北京时间）
+    python scripts/run_daily.py                      # 默认分析当日（北京时间）
     python scripts/run_daily.py --date 2026-08-12    # 指定日期
     python scripts/run_daily.py --mock               # 内置样例响应测试全流程（不调 API，输出写临时目录）
     python scripts/run_daily.py --dry-run            # 真实抓取/分析，但输出写临时目录，不改真实数据
@@ -26,6 +26,7 @@
 - 次要 1 假设检验到期检查：可解析日期+宽限期自动流转状态。
 - 次要 3 默认“昨日”改用 Asia/Shanghai 时区。
 - 次要 7 --mock/--dry-run 输出写入临时目录，不污染真实数据。
+- 次要 8 默认分析日期从“昨日”改为“当日”（配合每晚 20:00 定时，直接分析当天联播）。
 - 安全 5/6 LLM 错误日志脱敏；webhook 协议校验。
 """
 
@@ -149,6 +150,7 @@ def call_llm(system, user, retry_error=None):
             {"role": "user", "content": user},
         ],
         "temperature": 0.2,
+        "max_tokens": 8192,
         "response_format": {"type": "json_object"},
     }
 
@@ -590,7 +592,7 @@ def setup_temp_paths():
 
 def main():
     ap = argparse.ArgumentParser(description="每日自动化主流程")
-    ap.add_argument("--date", help="分析日期 YYYY-MM-DD（默认昨日，北京时间）")
+    ap.add_argument("--date", help="分析日期 YYYY-MM-DD（默认当日，北京时间）")
     ap.add_argument("--mock", action="store_true",
                     help="用内置样例响应测试流程（不调 API，输出写入临时目录）")
     ap.add_argument("--dry-run", action="store_true",
@@ -603,8 +605,8 @@ def main():
         tmp_root = setup_temp_paths()
         print(f"[dry-run] 输出写入临时目录：{tmp_root}")
 
-    # 默认“昨日”按北京时间计算（凌晨 0-8 点也不会拿到前天）
-    target_date = args.date or (datetime.now(CN_TZ) - timedelta(days=1)).strftime("%Y-%m-%d")
+    # 默认“当日”按北京时间计算（每晚 20:00 运行，直接分析当天已播完的联播）
+    target_date = args.date or datetime.now(CN_TZ).strftime("%Y-%m-%d")
     print(f"[1/7] 日期：{target_date}")
 
     if args.mock:

@@ -2,7 +2,7 @@
 
 > 2026-08-19 修订：日报正文恢复"信号详析式"结构（今日要点 → 读报指南 → 信号详析 → 信号跟踪表 → 验证打卡），替代"今日一句 + 速览卡片 + `<details>` 底稿"双层结构；取消独立"风险提示"小节（直接风险事件不再写入日报，"应出现未出现"异常缺席并入验证打卡）。
 
-> 本文件是《新闻联播》政策信号日报的完整生成 prompt，可粘贴到任意 LLM 自动化任务（GitHub Actions、cron、本地定时任务等）。建议每天 9:10 运行，分析前一日联播。所有路径以仓库根目录为基准。
+> 本文件是《新闻联播》政策信号日报的完整生成 prompt，可粘贴到任意 LLM 自动化任务（GitHub Actions、cron、本地定时任务等）。建议每天 20:00 运行，分析当日联播。所有路径以仓库根目录为基准。
 > 许可：本文件按仓库 LICENSE（GNU AGPL-3.0）授权。
 
 ---
@@ -15,10 +15,10 @@
 
 **必读输入：** `reference/framework-dictionary.md`、`reference/15fyp-outline-reference.md`、`data/tracking_table_digest.md`。
 
-## 步骤1：获取昨日联播全文
+## 步骤1：获取当日联播全文
 
-- 昨日日期 = 任务运行日期的前一天（例如 8/14 运行则分析 8/13 联播；报告文件名、标题均用联播日期）
-- 运行：`python scripts/fetch_xwlb.py --date 昨日日期 --outdir data/raw`
+- 当日日期 = 任务运行日期（例如 8/20 运行则分析 8/20 联播；报告文件名、标题均用联播日期）
+- 运行：`python scripts/fetch_xwlb.py --date 当日日期 --outdir data/raw`
 - 输出：`data/raw/xwlb_YYYYMMDD_text.md`（联播全文，带条目序号）
 - 脚本会自动降级到备份源；两个源都失败则报告错误并停止，不生成日报
 
