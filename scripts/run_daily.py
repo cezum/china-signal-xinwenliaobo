@@ -693,8 +693,111 @@ def _section_text(md, heading):
     return m.group(1).strip() if m else ""
 
 
-def build_notify_text(md):
-    """提取推送文本：标题 + "今日要点"段落（推送内容直接用今日要点）。"""
+def _shorten_verdict(result):
+    """压缩核验结果：已验证保留证据；延迟验证只留状态，不交代宽限期。"""
+    result = result.strip()
+    if "延迟验证" in result:
+        return "⏳ 延迟验证"
+    if "已验证" in result and not result.startswith(("✅", "✔")):
+        return "✅ " + result
+    return result
+
+
+def _parse_verification_check(md, tracking=None):
+    """解析日报「验证打卡」小节，返回 (核验行, 异常缺席文本)。
+
+    兼容两种写法：
+    - 表格：| 11 | 2026-08-15 | 条件 | ✅ 已验证——…… |
+    - 列表：- 无到期检验点。 / - 异常缺席：无
+    只有存在真实核验结果或异常缺席时才返回内容，避免推送空模板。
+    主题编号会替换为跟踪表中的主题名称（未提供跟踪表时回退「主题N」）。
+    """
+    sec = _section_text(md, "验证打卡")
+    if not sec:
+        return [], None
+    name_map = {}
+    if tracking and isinstance(tracking, dict):
+        for t in tracking.get("themes", []):
+            name_map[str(t.get("id"))] = str(t.get("name") or "").strip()
+    lines = []
+    abnormal = None
+    for raw in sec.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("|"):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) >= 4 and re.fullmatch(r"(?:\d+|主题\d+)", cells[0]):
+                theme_id = cells[0].lstrip("主题")
+                name = name_map.get(theme_id, "")
+                result = _shorten_verdict(
+                    re.sub(r"\*\*(.+?)\*\*", r"\1", cells[3]))
+                if len(result) > 90:
+                    result = result[:90] + "…"
+                prefix = f"{name} " if name else f"主题{theme_id} "
+                lines.append(prefix + result)
+            continue
+        content = re.sub(r"\*\*(.+?)\*\*", r"\1", line.strip())
+        content = content.lstrip("-* ").strip()
+        if "异常缺席" in content:
+            val = re.split(r"[：:]", content, maxsplit=1)[-1].strip()
+            if val and val not in ("无", "None"):
+                abnormal = val
+        elif any(mark in content for mark in ("已验证", "延迟验证", "待复核", "信号衰减", "证伪")):
+            lines.append(_shorten_verdict(content))
+    return lines, abnormal
+
+
+_CHANGE_LABELS = {"create": "🆕 新主题", "status_change": "📌", "framework_change": "🔄"}
+
+
+def _today_changes(md, tracking=None):
+    """从日报「今日生命周期事件」表提取有推送价值的变化。
+
+    只取三类：create（新主题）、status_change（状态流转）、framework_change（框架迁移）；
+    update（进展更新）过于日常、verify（核验）由「今日验证」块覆盖，均不重复推送。
+    主题编号替换为跟踪表中的主题名称（未提供时回退「主题N」）。
+    """
+    m = re.search(r"^#{2,4}\s*今日生命周期事件\s*(.*?)(?=^#{1,4}\s|\n---|\Z)",
+                  md, flags=re.MULTILINE | re.DOTALL)
+    if not m:
+        return []
+    name_map = {}
+    if tracking and isinstance(tracking, dict):
+        for t in tracking.get("themes", []):
+            name_map[str(t.get("id"))] = str(t.get("name") or "").strip()
+    changes = []
+    for raw in m.group(1).splitlines():
+        line = raw.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 4 or cells[2] not in _CHANGE_LABELS:
+            continue
+        theme_id = cells[1].lstrip("主题")
+        name = name_map.get(theme_id, f"主题{theme_id}")
+        label = _CHANGE_LABELS[cells[2]]
+        if cells[2] == "create":
+            changes.append(f"{label}：{name}")
+            continue
+        action = cells[3]
+        arrow = re.search(r"([^：:\s→>]+)\s*[→>]\s*([^\s，,；;]+)", action)
+        if arrow:
+            detail = f"{arrow.group(1)} → {arrow.group(2)}"
+        else:
+            detail = re.sub(r"^[^：:]*[：:]\s*", "", action).strip()
+            if len(detail) > 30:
+                detail = detail[:30] + "…"
+        changes.append(f"{label} {name}：{detail}")
+    return changes
+
+
+def build_notify_text(md, tracking=None):
+    """组装推送文本：标题 + 今日要点 + 有事件才加推的增量块。
+
+    - 今日变化：新主题建档 / 状态流转 / 框架迁移（有才推）；
+    - 今日验证：今天到期的检验点核验结果 + 异常缺席（无结果不占版面）；
+    """
     parts = []
 
     title = re.search(r"^#\s+.*$", md, flags=re.M)
@@ -704,6 +807,18 @@ def build_notify_text(md):
     key = _section_text(md, "今日要点")
     if key:
         parts.append(_strip_html(key))
+
+    changes = _today_changes(md, tracking)
+    if changes:
+        parts.append("【今日变化】\n" + "\n".join(changes))
+
+    check_lines, abnormal = _parse_verification_check(md, tracking)
+    if check_lines or abnormal:
+        block = ["【今日验证】"]
+        block.extend(check_lines)
+        if abnormal:
+            block.append(f"⚠️ 异常缺席：{abnormal}")
+        parts.append("\n".join(block))
 
     return "\n\n".join(parts) if parts else _strip_html(md)
 
@@ -721,7 +836,11 @@ def notify(report_path, summary=None):
             return
 
         md = read_text(report_path)
-        text = build_notify_text(md)
+        try:
+            tracking = read_json(PATHS["tracking"])
+        except Exception:
+            tracking = None
+        text = build_notify_text(md, tracking=tracking)
         if not text and summary:
             text = _normalize_summary(summary)
         if not text:

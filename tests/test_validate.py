@@ -228,7 +228,7 @@ class TestValidate(unittest.TestCase):
 
 
 class TestNotifyHelpers(unittest.TestCase):
-    def test_build_notify_text_uses_today_key_points(self):
+    def test_build_notify_text_basic(self):
         md = (
             "# 新闻联播风向标 | 2026-08-17\n\n"
             "## 今日要点\n\n今日最重要的变化。\n\n"
@@ -248,8 +248,87 @@ class TestNotifyHelpers(unittest.TestCase):
         text = rd.build_notify_text(md)
         self.assertIn("新闻联播风向标", text)
         self.assertIn("今日最重要的变化", text)
-        self.assertNotIn("示例主题", text)
+        self.assertNotIn("【最强信号】", text)  # 已去掉，避免与今日要点重复
+        # 无变化、无到期检验点、无跟踪表时不推空模板
         self.assertNotIn("验证打卡", text)
+        self.assertNotIn("【今日变化】", text)
+        self.assertNotIn("【今日验证】", text)
+        self.assertNotIn("【接下来盯】", text)  # 已删除
+
+    def test_build_notify_text_parses_verification_table(self):
+        md = (
+            "# 新闻联播风向标 | 2026-08-22\n\n"
+            "## 今日要点\n\n要点。\n\n"
+            "## 验证打卡\n\n"
+            "| 主题 | 验证日期 | 验证条件 | 核验结果 |\n"
+            "|------|---------|---------|---------|\n"
+            "| 11 | 2026-08-22 | 商务部发布数据 | ✅ 已验证——商务部发布1-7月数据，"
+            "高技术产业外资增长32.7%。来源：商务部（2026-08-22） |\n"
+            "| 22 | 2026-08-22 | 以旧换新数据 | ⏳ 延迟验证——今日联播未出现相关数据，"
+            "进入宽限期（+30天） |\n\n"
+            "**异常缺席：** 无\n"
+        )
+        tracking = {
+            "themes": [
+                {"id": 11, "name": "外资吸引与高水平开放"},
+                {"id": 22, "name": "以旧换新与两重建设"},
+            ]
+        }
+        text = rd.build_notify_text(md, tracking=tracking)
+        self.assertIn("【今日验证】", text)
+        self.assertIn("外资吸引与高水平开放 ✅ 已验证", text)
+        self.assertIn("以旧换新与两重建设 ⏳ 延迟验证", text)
+        self.assertNotIn("主题11", text)
+        self.assertNotIn("宽限期", text)  # 延迟验证不交代宽限期
+        self.assertNotIn("异常缺席", text)  # 值为「无」时不出现
+        self.assertNotIn("主题 核验结果", text)  # 表头行不进入结果
+
+    def test_build_notify_text_abnormal_only(self):
+        md = (
+            "# 新闻联播风向标 | 2026-08-18\n\n"
+            "## 今日要点\n\n要点。\n\n"
+            "## 验证打卡\n\n"
+            "| 主题 | 验证日期 | 验证条件 | 核验结果 |\n"
+            "|------|---------|---------|---------|\n"
+            "| 22 | 2026-08-15 | 以旧换新数据 | ⏳ 延迟验证——今日联播未出现相关数据 |\n\n"
+            "**异常缺席：** 商务部数据今日应发布但未出现\n"
+        )
+        tracking = {"themes": [{"id": 22, "name": "以旧换新与两重建设"}]}
+        text = rd.build_notify_text(md, tracking=tracking)
+        self.assertIn("⚠️ 异常缺席：商务部数据今日应发布但未出现", text)
+
+    def test_build_notify_text_today_changes(self):
+        md = (
+            "# 新闻联播风向标 | 2026-08-23\n\n"
+            "## 今日要点\n\n要点。\n\n"
+            "## 信号跟踪表\n\n### 今日生命周期事件\n\n"
+            "| 日期 | 主题 | 类型 | 动作 | 证据 | 原因 |\n"
+            "|------|------|------|------|------|------|\n"
+            "| 2026-08-23 | 52 | create | 主题建档（首次纳入跟踪） | 联播第3条 | 新增 |\n"
+            "| 2026-08-23 | 22 | status_change | 验证日期到期自动流转：跟踪中 → 延迟验证 | 证据 | 原因 |\n"
+            "| 2026-08-23 | 30 | framework_change | 框架变更：竞争框架 → 安全框架 | 证据 | 原因 |\n"
+            "| 2026-08-23 | 11 | update | 进展更新：外资数据发布 | 证据 | 原因 |\n"
+            "## 验证打卡\n\n- 无到期检验点。\n"
+        )
+        tracking = {
+            "themes": [
+                {"id": 2, "name": "国家发展规划法立法推进",
+                 "verification": {"status": "跟踪中", "date": "2026-08-25",
+                                  "condition": "全国人大常委会表决通过国家发展规划法"}},
+                {"id": 52, "name": "商业航天产业高地建设（山东模式）"},
+                {"id": 22, "name": "以旧换新与两重建设"},
+                {"id": 30, "name": "核电工程建设规模世界第一"},
+                {"id": 11, "name": "外资吸引与高水平开放"},
+            ]
+        }
+        text = rd.build_notify_text(md, tracking=tracking)
+        self.assertIn("【今日变化】", text)
+        self.assertIn("🆕 新主题：商业航天产业高地建设（山东模式）", text)
+        self.assertIn("📌 以旧换新与两重建设：跟踪中 → 延迟验证", text)
+        self.assertIn("🔄 核电工程建设规模世界第一：竞争框架 → 安全框架", text)
+        self.assertNotIn("外资吸引与高水平开放", text)  # update 不推送
+        self.assertNotIn("【接下来盯】", text)
+        self.assertNotIn("全国人大常委会表决通过", text)  # 不带验证条件细节
 
     def test_build_notify_text_falls_back_to_raw(self):
         md = "纯文本兜底内容"
