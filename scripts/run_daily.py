@@ -49,6 +49,7 @@ except Exception:  # Python < 3.9 或系统无 tzdata
     CN_TZ = timezone(timedelta(hours=8))
 
 from common import read_text, write_atomic, read_json, write_json, recompute_stats
+from report_enhance import enrich_report, yesterday_focus_block
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(ROOT, "scripts")
@@ -120,11 +121,16 @@ def fetch_transcript(target_date):
     return path
 
 
-def build_messages(transcript_path):
+def build_messages(transcript_path, target_date=None):
+    """拼装 LLM 用户消息：当日联播全文 + 跟踪表摘要 + 昨日涉及主题 + 词典 + 纲要。"""
     system = read_text(PROMPT_MD)
     parts = [f"## 当日联播全文（{os.path.basename(transcript_path)}）\n{read_text(transcript_path)}"]
     if os.path.exists(PATHS["digest"]):
         parts.append(f"## 信号跟踪表摘要\n{read_text(PATHS['digest'])}")
+    if target_date and os.path.exists(PATHS["tracking"]):
+        block = yesterday_focus_block(read_json(PATHS["tracking"]), target_date)
+        if block:
+            parts.append(block)
     parts += [
         f"## 框架判定词典\n{read_text(DICT_MD)}",
         f"## 十五五纲要结构参考\n{read_text(STRUCT_MD)}",
@@ -766,7 +772,7 @@ def main():
     else:
         print("[2/7] 抓取联播全文...")
         transcript = fetch_transcript(target_date)
-        system, user = build_messages(transcript)
+        system, user = build_messages(transcript, target_date)
         print("[3/7] 调用 LLM 分析...")
         result = None
         retry_error = None
@@ -827,7 +833,8 @@ def main():
 
     print("[5/7] 生成日报...")
     report_path = os.path.join(PATHS["reports"], f"{target_date}.md")
-    write_atomic(report_path, result["report_markdown"])
+    report_md = enrich_report(result["report_markdown"], doc, target_date)
+    write_atomic(report_path, report_md)
 
     print("[6/7] 渲染跟踪表...")
     render_cmd = [sys.executable, os.path.join(SCRIPTS, "render_tracking_table.py"),
