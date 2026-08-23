@@ -67,6 +67,25 @@ class TestRenderFull(unittest.TestCase):
         self.assertIn("| **合计** | **0** | **100%** |", text)
         self.assertIn("（跟踪表为空，暂无统计）", text)
 
+    def test_archived_excluded_from_digest_and_tracking(self):
+        """归档主题移出极简表与摘要主表，但完整表保留全部记录。"""
+        t1 = make_theme(1)
+        t2 = make_theme(2, name="已归档主题")
+        t2["verification"]["status"] = "归档"
+        doc = make_doc(themes=[t1, t2])
+        doc["categories"][0]["theme_ids"] = [1, 2]
+
+        digest = rt.render_digest(doc)
+        self.assertNotIn("已归档主题", digest)
+        self.assertIn("已归档 1 个主题", digest)
+
+        tracking = rt.render_tracking(doc)
+        self.assertNotIn("已归档主题", tracking)
+        self.assertIn("已归档 1 个主题", tracking)
+
+        full = rt.render_full(doc)
+        self.assertIn("已归档主题", full)
+
     def test_more_than_10_categories(self):
         themes = [make_theme(i, category=f"大类{i}") for i in range(1, 13)]
         doc = make_doc(themes=themes)

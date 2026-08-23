@@ -452,10 +452,15 @@ def render_digest(doc):
     out.append("# 信号跟踪表摘要（自动化每日读取用）")
     out.append("")
     out.append(f"> 由 tracking_table.json 自动生成，更新于 {esc(doc['meta'].get('generated_at', '?'))}。完整信息见 reference/initial_signal_tracking_table.md。")
+    active = [t for t in doc["themes"]
+              if str((t.get("verification") or {}).get("status", "")) != "归档"]
+    archived_n = len(doc["themes"]) - len(active)
+    if archived_n:
+        out.append(f"> 已归档 {archived_n} 个主题，不在本摘要主表中（完整记录见 reference/initial_signal_tracking_table.md）。")
     out.append("")
     out.append("| # | 主题 | 状态 | 层级 | 首次性 | 具体性 | 政策窗口 | 框架 | 验证日期 | 验证条件 |")
     out.append("|---|------|------|------|--------|--------|---------|------|---------|---------|")
-    for t in doc["themes"]:
+    for t in active:
         dims = t.get("dimensions") if isinstance(t.get("dimensions"), dict) else {}
         v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
         out.append(
@@ -467,12 +472,12 @@ def render_digest(doc):
     out.append("")
     out.append("### 主题政策传导速览")
     out.append("")
-    for t in doc["themes"]:
+    for t in active:
         out.append(f"- 主题{t['id']} {esc(t.get('name', ''))}：{esc(public_conduction(t))}")
     out.append("")
     out.append("### 验证日期含\"待确认\"的主题（自动化无法自动触发，需人工锚定）")
     out.append("")
-    pending = [t for t in doc["themes"]
+    pending = [t for t in active
                if "待确认" in str((t.get("verification") or {}).get("date", ""))]
     if pending:
         for t in pending:
@@ -507,7 +512,10 @@ def render_tracking(doc):
     out.append("| # | 主题 | 风向 | 验证日期 | 盯什么 |")
     out.append("|---|------|------|----------|--------|")
 
-    for t in sorted(doc.get("themes", []), key=_tracking_sort_key):
+    active = [t for t in doc.get("themes", [])
+              if str((t.get("verification") or {}).get("status", "")) != "归档"]
+    archived_n = len(doc.get("themes", [])) - len(active)
+    for t in sorted(active, key=_tracking_sort_key):
         dims = t.get("dimensions") if isinstance(t.get("dimensions"), dict) else {}
         v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
 
@@ -526,6 +534,10 @@ def render_tracking(doc):
             f"| {int(t.get('id', 0))} | {topic} | {wind_text} | "
             f"{esc(date)} | {esc(short_logic(t))} |"
         )
+    if archived_n:
+        out.append(
+            f"\n> 已归档 {archived_n} 个主题，已移出本表"
+            "（完整记录见 reference/initial_signal_tracking_table.md）")
 
     out += [
         "",

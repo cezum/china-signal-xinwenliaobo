@@ -1,0 +1,11 @@
+# 统一行尾为 LF，避免公私库一致性检查被 CRLF/LF 差异误报（2026-08-23）
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.csv text eol=lf
+*.svg text eol=lf
+*.html text eol=lf
+*.txt text eol=lf

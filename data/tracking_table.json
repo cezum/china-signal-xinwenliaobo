@@ -832,11 +832,11 @@
       "outline_mapping": "第七篇 第21章（自主开放）：纲要提出扩大自主开放，有序放宽电信、医疗等领域外资准入",
       "verification": {
         "condition": "商务部发布上半年实际使用外资数据，关注高技术和制造业外资占比变化",
-        "source": "商务部官网（外部核验）",
+        "source": "商务部官网/联播（外部核验）",
         "date": "2026-08-15",
         "grace_period": "+14天",
         "status": "已验证",
-        "external_url": "https://finance.sina.com.cn/jjxw/2026-07-23/doc-iniiuskx1542848.shtml",
+        "external_url": "",
         "last_verify_attempt": "2026-08-18"
       },
       "category": "改革开放",
@@ -893,6 +893,13 @@
           "to": "跟踪中",
           "evidence": "联播第4条：商务部数据，1-7月高技术产业实际使用外资1823.1亿元，同比增长32.7%，占全国实际使用外资41.6%，较去年同期提升12.2个百分点",
           "reason": "高技术产业外资占比显著提升，验证外资结构优化趋势"
+        },
+        {
+          "date": "2026-08-23",
+          "type": "update",
+          "action": "数据修复：清理非官方 external_url",
+          "evidence": "原 external_url 为新浪财经转载（finance.sina.com.cn，非官方域名），按强证据闸门口径清除；验证结论以 2026-08-22 联播商务部数据报道为准",
+          "reason": "外部查证强证据闸门要求官方域名来源（2026-08-18 规则），历史数据同步清理"
         }
       ],
       "framework_evidence": "发展框架：命中'扩大'、'开放'等词典词"
@@ -1501,7 +1508,7 @@
         "source": "商务部发布会/央视联播（外部核验）",
         "date": "2026-08-15",
         "grace_period": "+14天",
-        "status": "延迟验证",
+        "status": "已验证",
         "external_url": "https://news.cctv.com/2026/07/25/ARTIP1O2SEVjSmVgCb0JOX7D260725.shtml",
         "last_verify_attempt": "2026-08-20"
       },
@@ -1585,6 +1592,13 @@
           "action": "验证日期到期自动流转：跟踪中 → 延迟验证",
           "evidence": "验证日期 2026-08-15（宽限期 +14天）",
           "reason": "到期检查自动触发"
+        },
+        {
+          "date": "2026-08-23",
+          "type": "verify",
+          "action": "数据修复：状态回正（延迟验证 → 已验证）",
+          "evidence": "lifecycle 已有 2026-08-16/08-17/08-20 三次外部查证确认商务部发布以旧换新销售额数据（1.1万亿→1.25万亿，7/25 联播已报道），验证条件满足",
+          "reason": "修复 apply_result/apply_expiry_checks 状态回归 bug：已验证被后续进展更新覆盖为跟踪中后又被到期检查打回"
         }
       ],
       "framework_evidence": "发展框架：命中‘扩大’‘高质量’等词典词；原文‘坚持扩大内需这个战略基点’"

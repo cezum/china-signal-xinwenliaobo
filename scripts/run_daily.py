@@ -250,6 +250,12 @@ def validate_llm_result(result):
     if not isinstance(signals, list):
         errors.append("signals 必须是数组")
     else:
+        # 设计标准：每日 3-4 条，不够格不硬凑。超过 4 条回传 LLM 重试，
+        # 由 LLM 按"层级高、具体性强、验证窗口近"优先选取（2026-08 review 修复）。
+        if len(signals) > 4:
+            errors.append(
+                f"signals 数量 {len(signals)} 超过上限 4 条（标准 3-4 条，"
+                "不够格不硬凑），请按层级/具体性/验证窗口优先选取")
         for i, sig in enumerate(signals):
             tag = f"signals[{i}]"
             if not isinstance(sig, dict):
@@ -284,6 +290,47 @@ def validate_llm_result(result):
                     errors.append(f"{tag}.new_theme.verification 必须是对象")
                 elif "status" in nt["verification"] and nt["verification"]["status"] not in VER_STATUS:
                     warnings.append(f"{tag}.new_theme.verification.status 非法值，回退默认值")
+                # 新主题验证条件质量闸门：必须可证伪、禁止循环条件/趋势延续、
+                # 验证日期必须是纯日期（2026-08 review 修复）。
+                if isinstance(nt.get("verification"), dict):
+                    nv = nt["verification"]
+                    cond = str(nv.get("condition") or "").strip()
+                    if not cond:
+                        errors.append(f"{tag}.new_theme.verification.condition 缺失或为空")
+                    else:
+                        for pat in ("政策信号可能传导至", "相关配套实施方案或具体项目落地",
+                                    "具体项目落地或建设进展", "后续进展"):
+                            if pat in cond:
+                                errors.append(
+                                    f"{tag}.new_theme.verification.condition 疑似不可证伪"
+                                    f"（命中弱模式「{pat}」，必须是能证实/证伪假设的具体事件或数据）：{cond[:50]}")
+                        if re.search(
+                                r"(增速|数据|占比|规模|势头|趋势).{0,8}(延续|维持|保持)|是否延续|延续或提升",
+                                cond):
+                            errors.append(
+                                f"{tag}.new_theme.verification.condition 疑似循环条件/趋势延续"
+                                f"（design.md 4.2 禁止，趋势类观察不占政策验证额度）：{cond[:50]}")
+                    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(nv.get("date") or "").strip()):
+                        errors.append(
+                            f"{tag}.new_theme.verification.date 必须为 YYYY-MM-DD 纯日期：{nv.get('date')!r}")
+                if not str(nt.get("public_conduction") or "").strip():
+                    errors.append(f"{tag}.new_theme.public_conduction 缺失或为空（公开层政策传导逻辑必填）")
+                # 政策载体软检查：信号来源必须能指向会议/文件/讲话/规划等载体（仅警告，不阻断）。
+                carrier_text = " ".join(filter(None, [
+                    str(nt.get("name") or ""),
+                    str(nt.get("investment_hypothesis") or ""),
+                    str(nt.get("outline_mapping") or ""),
+                    " ".join(str(ev.get("evidence") or "") for ev in nt.get("lifecycle", [])
+                             if isinstance(ev, dict)),
+                ]))
+                if not re.search(
+                        r"发布|印发|规划|纲要|会议|部署|讲话|意见|方案|通知|条例|批示|发布会|"
+                        r"开工|数据|文件|立法|施行|试点|国务院|总书记|总理|商务部|发改委|工信部|"
+                        r"住建部|交通部|教育部|文旅部|财政部|科技部|人社部|应急管理部|中央|部委",
+                        carrier_text):
+                    warnings.append(
+                        f"{tag}.new_theme 疑似缺乏政策载体（会议/文件/讲话/规划），"
+                        "请复核是否满足信号提取标准（有政策载体是硬性条件）")
                 if "public_conduction" in nt and not isinstance(nt["public_conduction"], str):
                     errors.append(f"{tag}.new_theme.public_conduction 必须是字符串")
                 if "category" in nt and not isinstance(nt["category"], str):
@@ -312,6 +359,17 @@ def validate_llm_result(result):
                         errors.append(f"{tag}.update.verification 必须是对象")
                     elif "status" in ver and ver["status"] not in VER_STATUS:
                         errors.append(f"{tag}.update.verification.status 非法值：{ver['status']!r}")
+                    elif isinstance(ver, dict) and ver.get("status") in ("已验证", "信号衰减"):
+                        # 终态判定必须带证据：同一次 update 里要有 verify/decay 生命周期事件，
+                        # 防止 LLM 无出处直接把状态写成"已验证/信号衰减"（2026-08 review 修复）。
+                        has_verdict = any(
+                            isinstance(ev, dict) and ev.get("type") in ("verify", "decay")
+                            for ev in upd.get("lifecycle_events", [])
+                        )
+                        if not has_verdict:
+                            errors.append(
+                                f"{tag}.update.verification.status 设为 {ver['status']} 但 update "
+                                "缺少 verify/decay 生命周期事件（终态判定必须留证据与出处）")
                 if "public_conduction" in upd and not isinstance(upd["public_conduction"], str):
                     errors.append(f"{tag}.update.public_conduction 必须是字符串")
 
@@ -321,6 +379,28 @@ def validate_llm_result(result):
     else:
         num_signals = len(signals) if isinstance(signals, list) else 0
         errors.extend(_validate_report_structure(report, num_signals))
+        # 口径一致性：日报信号块必须写明"主题N（首次纳入/进展更新）"，
+        # 更新主题不得写成"首次纳入"（2026-08 review 修复，仅警告不阻断）。
+        blocks = re.split(r"(?=^###\s*信号)", report, flags=re.MULTILINE)
+        signal_blocks = [b for b in blocks if re.match(r"^###\s*信号", b, flags=re.MULTILINE)]
+        for i, sig in enumerate(signals if isinstance(signals, list) else []):
+            if i >= len(signal_blocks) or not isinstance(sig, dict):
+                continue
+            block = signal_blocks[i]
+            if sig.get("existing_theme_id") is not None:
+                try:
+                    tid = int(sig["existing_theme_id"])
+                except (TypeError, ValueError):
+                    continue
+                if re.search(rf"主题\s*{tid}\s*（\s*首次纳入", block):
+                    warnings.append(
+                        f"signals[{i}] 更新主题 {tid}，日报信号块却写成「首次纳入」，"
+                        "口径矛盾（应为进展更新/状态变更）")
+            elif sig.get("new_theme"):
+                if "已纳入跟踪表" in block and not re.search(
+                        r"主题\s*\d+\s*（\s*(?:首次纳入|进展更新|状态变更)", block):
+                    warnings.append(
+                        f"signals[{i}] 新主题信号块未写明「已纳入跟踪表主题N（首次纳入/进展更新）」")
 
     if not isinstance(result.get("expiry_check"), str):
         warnings.append("expiry_check 缺失，视为无到期检验点")
@@ -414,11 +494,32 @@ def apply_result(doc, result, target_date):
                 theme["public_conduction"] = upd["public_conduction"]
             ver = upd.get("verification")
             if isinstance(ver, dict):
+                # 状态守卫：已验证/待复核/信号衰减/归档/线索就绪 是"有判词"状态，
+                # 普通进展更新（无 status_change/verify/decay 事件）不得把它们静默拉回
+                # "跟踪中"，否则到期检查会按旧日期再次打回（2026-08 回归 bug：主题7/19/22）。
+                has_verdict_event = any(
+                    isinstance(ev, dict) and ev.get("type") in ("status_change", "verify", "decay")
+                    for ev in upd.get("lifecycle_events", [])
+                )
                 for k, v in ver.items():
                     if k not in VER_KEYS:
                         continue
                     if k == "status" and v not in VER_STATUS:
                         continue
+                    if k == "status":
+                        cur = str(theme["verification"].get("status", "跟踪中"))
+                        if (cur in ("已验证", "待复核", "信号衰减", "归档", "投资线索就绪")
+                                and v == "跟踪中" and not has_verdict_event):
+                            print(
+                                f"        警告：主题{tid} 状态 {cur} 被进展更新尝试覆盖为"
+                                " 跟踪中，已忽略（需显式 status_change/verify/decay 事件）")
+                            continue
+                        if (v in ("已验证", "信号衰减")
+                                and v != cur and not has_verdict_event):
+                            print(
+                                f"        警告：主题{tid} 状态 {cur} 被进展更新尝试改为 {v}"
+                                "，已忽略（终态判定必须带 verify/decay 事件与证据）")
+                            continue
                     theme["verification"][k] = v
             stats["updated"] += 1
 
@@ -444,6 +545,11 @@ def apply_expiry_checks(doc, today):
     for t in doc["themes"]:
         v = t.get("verification") or {}
         if v.get("status") not in ("跟踪中", "延迟验证"):
+            continue
+        # 防御：lifecycle 里已有 verify/decay 终判的主题，不再被自动到期检查打回，
+        # 避免"已验证 → 延迟验证/待复核"回归（2026-08 数据事故：主题7/19/22）。
+        if any(isinstance(ev, dict) and ev.get("type") in ("verify", "decay")
+               for ev in t.get("lifecycle", [])):
             continue
         date_str = str(v.get("date") or "").strip()
         m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})", date_str)
@@ -617,6 +723,7 @@ def main():
                     "new_theme": {
                         "name": "示例测试主题",
                         "investment_hypothesis": "测试假设 → 测试产业链",
+                        "public_conduction": "mock 政策传导逻辑：政策信号可能传导至测试产业实物工作量",
                         "dimensions": {"level": "C", "novelty": "NEW", "specificity": "S2",
                                        "policy_window": "接近", "verification_window": "MID",
                                        "narrative_framework": "发展框架"},

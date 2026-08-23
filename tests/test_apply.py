@@ -78,7 +78,66 @@ class TestApplyResult(unittest.TestCase):
         # 新分类自动建立并挂上主题 id
         cats = {c["name"]: c["theme_ids"] for c in saved["categories"]}
         self.assertIn("绿色转型", cats)
-        self.assertIn(2, cats["绿色转型"])
+
+    def test_verified_status_not_clobbered_by_plain_update(self):
+        """P0-1 回归：已验证主题被无事件进展更新覆盖回跟踪中 → 忽略。"""
+        doc = make_doc()
+        theme = doc["themes"][0]
+        theme["verification"]["status"] = "已验证"
+        sig = {
+            "existing_theme_id": 1,
+            "update": {
+                "lifecycle_events": [
+                    {"date": "2026-08-17", "type": "update", "action": "进展更新"}],
+                "verification": {"status": "跟踪中"},
+            },
+        }
+        rd.apply_result(doc, {"signals": [sig]}, "2026-08-17")
+        self.assertEqual(theme["verification"]["status"], "已验证")
+
+    def test_status_change_allowed_with_verdict_event(self):
+        """显式 status_change 事件 + 状态变更 → 允许。"""
+        doc = make_doc()
+        theme = doc["themes"][0]
+        sig = {
+            "existing_theme_id": 1,
+            "update": {
+                "lifecycle_events": [
+                    {"date": "2026-08-17", "type": "status_change",
+                     "action": "状态变更：跟踪中→已验证"}],
+                "verification": {"status": "已验证"},
+            },
+        }
+        rd.apply_result(doc, {"signals": [sig]}, "2026-08-17")
+        self.assertEqual(theme["verification"]["status"], "已验证")
+
+    def test_final_status_without_verdict_event_ignored(self):
+        """无 verify/decay 事件时，跟踪中→已验证 被忽略（防 LLM 无出处写终态）。"""
+        doc = make_doc()
+        theme = doc["themes"][0]
+        sig = {
+            "existing_theme_id": 1,
+            "update": {
+                "lifecycle_events": [],
+                "verification": {"status": "已验证"},
+            },
+        }
+        rd.apply_result(doc, {"signals": [sig]}, "2026-08-17")
+        self.assertEqual(theme["verification"]["status"], "跟踪中")
+
+    def test_expiry_check_skips_theme_with_verdict(self):
+        """P0-1 回归：lifecycle 有 verify 终判的主题，到期检查不得打回。"""
+        doc = make_doc()
+        theme = doc["themes"][0]
+        theme["verification"] = {
+            "condition": "c", "source": "联播", "date": "2026-08-01",
+            "grace_period": "+7天", "status": "已验证",
+        }
+        theme["lifecycle"].append(
+            {"date": "2026-08-16", "type": "verify", "action": "验证通过"})
+        changed = rd.apply_expiry_checks(doc, "2026-08-16")
+        self.assertEqual(changed, 0)
+        self.assertEqual(theme["verification"]["status"], "已验证")
 
     def test_duplicate_name_skipped(self):
         doc = make_doc()

@@ -15,6 +15,7 @@ def valid_new_signal():
         "new_theme": {
             "name": "新主题",
             "investment_hypothesis": "假设",
+            "public_conduction": "政策信号可能传导至测试产业链实物工作量",
             "dimensions": {"level": "A", "novelty": "NEW", "specificity": "S1",
                            "policy_window": "开放", "verification_window": "SHORT",
                            "narrative_framework": "发展框架"},
@@ -75,6 +76,65 @@ class TestValidate(unittest.TestCase):
         r = base_result(); r["signals"] = "x"
         errors, _ = rd.validate_llm_result(r)
         self.assertTrue(any("signals" in e for e in errors))
+
+    def test_more_than_4_signals_rejected(self):
+        r = base_result(signals=[valid_new_signal()] * 5)
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("超过上限 4" in e for e in errors))
+
+    def test_weak_condition_rejected(self):
+        sig = valid_new_signal()
+        sig["new_theme"]["verification"]["condition"] = (
+            "政策信号可能传导至基础设施建设、新兴领域投资、消费升级等实物工作量")
+        r = base_result(signals=[sig])
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("疑似不可证伪" in e for e in errors))
+
+    def test_cycle_condition_rejected(self):
+        sig = valid_new_signal()
+        sig["new_theme"]["verification"]["condition"] = "联播报道高技术制造业增速延续或提升"
+        r = base_result(signals=[sig])
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("循环条件/趋势延续" in e for e in errors))
+
+    def test_non_iso_verification_date_rejected(self):
+        sig = valid_new_signal()
+        sig["new_theme"]["verification"]["date"] = "预计2026年10月前后"
+        r = base_result(signals=[sig])
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("YYYY-MM-DD" in e for e in errors))
+
+    def test_missing_public_conduction_rejected(self):
+        sig = valid_new_signal()
+        sig["new_theme"].pop("public_conduction")
+        r = base_result(signals=[sig])
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("public_conduction" in e for e in errors))
+
+    def test_verified_status_requires_verdict_event(self):
+        sig = valid_update_signal()
+        sig["update"]["verification"] = {"status": "已验证"}
+        r = base_result(signals=[sig])
+        errors, _ = rd.validate_llm_result(r)
+        self.assertTrue(any("缺少 verify/decay 生命周期事件" in e for e in errors))
+
+    def test_verified_status_with_verdict_event_passes(self):
+        sig = valid_update_signal()
+        sig["update"]["lifecycle_events"] = [
+            {"date": "2026-08-17", "type": "verify", "action": "验证通过"}]
+        sig["update"]["verification"] = {"status": "已验证"}
+        r = base_result(signals=[sig])
+        errors, _ = rd.validate_llm_result(r)
+        self.assertEqual(errors, [])
+
+    def test_update_written_as_first_entry_warns(self):
+        sig = valid_update_signal()
+        r = base_result(signals=[sig])
+        r["report_markdown"] = r["report_markdown"].replace(
+            "- **待验证：** 测试。",
+            "- **待验证：** 已纳入跟踪表主题30（首次纳入）。")
+        _, warnings = rd.validate_llm_result(r)
+        self.assertTrue(any("口径矛盾" in w for w in warnings))
 
     def test_both_new_and_existing_rejected(self):
         r = base_result(); r["signals"] = [{**valid_new_signal(), "existing_theme_id": 5}]
