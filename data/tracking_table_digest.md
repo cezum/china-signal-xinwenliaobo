@@ -1,6 +1,6 @@
 # 信号跟踪表摘要（自动化每日读取用）
 
-> 由 tracking_table.json 自动生成，更新于 2026-08-22。完整信息见 reference/initial_signal_tracking_table.md。
+> 由 tracking_table.json 自动生成，更新于 2026-08-23。完整信息见 reference/initial_signal_tracking_table.md。
 > 已结项 7 个主题（已验证/线索/衰减/归档），不在本摘要主表中（完整记录见 reference/initial_signal_tracking_table.md）。
 
 | # | 主题 | 状态 | 层级 | 首次性 | 具体性 | 政策窗口 | 框架 | 验证日期 | 验证条件 |

@@ -1,6 +1,6 @@
 # 极简跟踪表
 
-> 由 tracking_table.json 自动生成，更新于 2026-08-22。完整字段见 reference/initial_signal_tracking_table.md；口径说明见 notes/如何看懂这份雷达.md。
+> 由 tracking_table.json 自动生成，更新于 2026-08-23。完整字段见 reference/initial_signal_tracking_table.md；口径说明见 notes/如何看懂这份雷达.md。
 
 | # | 主题 | 风向 | 验证日期 | 盯什么 |
 |---|------|------|----------|--------|
