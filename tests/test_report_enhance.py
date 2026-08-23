@@ -188,5 +188,56 @@ class TestYesterdayFocusBlock(unittest.TestCase):
         self.assertEqual(reh.yesterday_focus_block(doc, "2026-08-23"), "")
 
 
+class TestFactualCorrection(unittest.TestCase):
+    """方案 A：落库后用真实跟踪表校正日报的可机器校验标注。"""
+
+    def test_new_theme_claim_id_corrected(self):
+        t = make_theme(53, name="示例测试主题", lifecycle=[
+            {"date": "2026-08-23", "type": "create", "action": "建档"}])
+        doc = make_doc([t])
+        md = ("### 信号一：示例测试主题\n\n"
+              "- **待验证：** 检验条件。已纳入跟踪表主题1（首次纳入）。")
+        out = reh.correct_factual_claims(
+            md, doc, [{"new_theme": {"name": "示例测试主题"}}], "2026-08-23")
+        self.assertIn("已纳入跟踪表主题53（首次纳入）", out)
+        self.assertNotIn("主题1", out)
+
+    def test_existing_theme_claim_without_event_drops_kind(self):
+        t = make_theme(42, name="下沉市场主题", lifecycle=[
+            {"date": "2026-08-18", "type": "create", "action": "建档"}])
+        doc = make_doc([t])
+        md = "### 信号一：赛事经济\n\n- **待验证：** 需观察。已纳入跟踪表主题42（进展更新）。"
+        out = reh.correct_factual_claims(
+            md, doc, [{"existing_theme_id": 42}], "2026-08-23")
+        self.assertIn("已纳入跟踪表主题42", out)
+        self.assertNotIn("（进展更新）", out)
+
+    def test_existing_theme_claim_verify_becomes_state_change(self):
+        t = make_theme(19, lifecycle=[
+            {"date": "2026-08-23", "type": "verify", "action": "验证通过"}])
+        doc = make_doc([t])
+        md = "### 信号一：就业\n\n- **待验证：** 已纳入跟踪表主题19（进展更新）。"
+        out = reh.correct_factual_claims(
+            md, doc, [{"existing_theme_id": 19}], "2026-08-23")
+        self.assertIn("已纳入跟踪表主题19（状态变更）", out)
+
+    def test_checkin_status_marker_corrected(self):
+        t = make_theme(19, status="已验证", lifecycle=[
+            {"date": "2026-08-23", "type": "verify", "action": "验证通过"}])
+        doc = make_doc([t])
+        md = ("## 验证打卡\n\n"
+              "| 主题 | 验证日期 | 验证条件 | 核验结果 |\n"
+              "|------|---------|---------|---------|\n"
+              "| 19 | 2026-08-17 | 条件 | ⏳ 延迟验证——今日无报道 |\n")
+        out = reh.correct_factual_claims(md, doc, [], "2026-08-23")
+        self.assertIn("| 19 | 2026-08-17 | 条件 | ✅ 已验证——今日无报道 |", out)
+
+    def test_no_match_preserved(self):
+        doc = make_doc([make_theme(1)])
+        md = "## 验证打卡\n\n- 无到期检验点。\n"
+        out = reh.correct_factual_claims(md, doc, [], "2026-08-23")
+        self.assertEqual(out, md)
+
+
 if __name__ == "__main__":
     unittest.main()

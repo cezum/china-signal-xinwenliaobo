@@ -49,7 +49,9 @@ except Exception:  # Python < 3.9 或系统无 tzdata
     CN_TZ = timezone(timedelta(hours=8))
 
 from common import read_text, write_atomic, read_json, write_json, recompute_stats
-from report_enhance import enrich_report, yesterday_focus_block, last_activity
+from report_enhance import (
+    enrich_report, yesterday_focus_block, last_activity, correct_factual_claims,
+)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(ROOT, "scripts")
@@ -915,7 +917,9 @@ def main():
 
     print("[5/7] 生成日报...")
     report_path = os.path.join(PATHS["reports"], f"{target_date}.md")
-    report_md = enrich_report(result["report_markdown"], doc, target_date)
+    report_md = correct_factual_claims(
+        result["report_markdown"], doc, result.get("signals", []), target_date)
+    report_md = enrich_report(report_md, doc, target_date)
     write_atomic(report_path, report_md)
 
     print("[6/7] 渲染跟踪表...")

@@ -11,6 +11,10 @@
 - 本月回顾（月报）：每月最后一天生成，覆盖本月 1 日至当日。
 - 静默主题检测：跟踪中/延迟验证/待复核主题，距最近事件 >= 14 天无更新时提示；
   >= 30 天标注“长期静默”。
+
+2026-08-23 追加（方案 A）：correct_factual_claims() 在落库后用真实跟踪表校正
+日报中可机器校验的标注——信号块“已纳入跟踪表主题N（类型）”的编号/类型、
+“验证打卡”表格的状态标记；只校结构化标注，不改写叙事文字。
 """
 
 import re
@@ -21,6 +25,19 @@ SILENT_DAYS = 14
 LONG_SILENT_DAYS = 30
 WEEKLY_DAY = 6  # 周日（weekday()：周一=0）
 MAX_PERIOD_ROWS = 15  # 周报/月报最多展示的主题行数
+
+STATUS_BADGE = {
+    "已验证": "✅ 已验证",
+    "延迟验证": "⏳ 延迟验证",
+    "待复核": "🔍 待复核",
+    "信号衰减": "❌ 信号衰减",
+    "归档": "🗄️ 归档",
+    "投资线索就绪": "💡 线索",
+    "跟踪中": "🟢 跟踪中",
+}
+
+CLAIM_RE = re.compile(
+    r"已纳入跟踪表主题\s*(\d+)\s*（\s*(首次纳入|进展更新|状态变更|状态流转)\s*）")
 
 TYPE_LABEL = {
     "create": "建档",
@@ -289,4 +306,113 @@ def enrich_report(md, doc, today):
     extras = [s for s in extras if s]
     if extras:
         md = md.rstrip() + "\n\n---\n\n" + "\n\n".join(extras).rstrip() + "\n"
+    return md
+
+
+def _event_kind_label(theme, day):
+    """主题当天 lifecycle 事件 → 声明类型标签；当天无事件返回 None。"""
+    day = _iso_date(day)
+    if day is None:
+        return None
+    kinds = [ev.get("type") for ev in theme.get("lifecycle", [])
+             if isinstance(ev, dict) and _iso_date(ev.get("date")) == day]
+    if "create" in kinds:
+        return "首次纳入"
+    if any(k in kinds for k in ("status_change", "verify", "decay")):
+        return "状态变更"
+    if "update" in kinds:
+        return "进展更新"
+    return None
+
+
+def _actual_claim(sig, themes, day):
+    """按落库结果给出信号对应的“已纳入跟踪表主题N（类型）”声明；无法确定返回 None。"""
+    if sig is None:
+        return None
+    if sig.get("new_theme"):
+        name = str((sig.get("new_theme") or {}).get("name") or "").strip()
+        if not name:
+            return None
+        # apply_result 按名称去重；新主题落库后以名称为准反查 id
+        cands = [t for t in themes.values() if t.get("name") == name]
+        if not cands:
+            return None  # 重复信号被跳过或未落库，保留原文
+        t = max(cands, key=lambda x: int(x.get("id", 0)))
+        kind = _event_kind_label(t, day)
+        return f"已纳入跟踪表主题{t['id']}（{kind}）" if kind else f"已纳入跟踪表主题{t['id']}"
+    if sig.get("existing_theme_id") is not None:
+        try:
+            tid = int(sig["existing_theme_id"])
+        except (TypeError, ValueError):
+            return None
+        t = themes.get(tid)
+        if t is None:
+            return None
+        kind = _event_kind_label(t, day)
+        return f"已纳入跟踪表主题{tid}（{kind}）" if kind else f"已纳入跟踪表主题{tid}"
+    return None
+
+
+def _correct_claims_in_block(block, sig, themes, day):
+    """把单个信号块里的“已纳入跟踪表主题N（类型）”声明替换为落库真实值。"""
+    def repl(m):
+        claim = _actual_claim(sig, themes, day)
+        return claim if claim else m.group(0)
+    return CLAIM_RE.sub(repl, block)
+
+
+def _correct_checkin_status(md, themes):
+    """校正“验证打卡”表格里的状态标记（只替换核验结果单元格开头标记）。"""
+    m = re.search(r"(^##\s*验证打卡\s*$.*?)(?=^##\s|\n---|\Z)",
+                  md, flags=re.MULTILINE | re.DOTALL)
+    if not m:
+        return md
+    section = m.group(1)
+
+    def row_repl(row):
+        tm = re.match(r"^\|\s*(\d+)\s*\|", row)
+        if not tm:
+            return row
+        theme = themes.get(int(tm.group(1)))
+        if theme is None:
+            return row
+        status = str((theme.get("verification") or {}).get("status", ""))
+        badge = STATUS_BADGE.get(status)
+        if not badge:
+            return row
+        # 只替换最后一个单元格开头的状态标记，保留后面的解释文字
+        def cell_repl(cm):
+            return "| " + badge + (cm.group(1) or "").rstrip() + " |"
+        return re.sub(
+            r"\|\s*(?:✅|⏳|🔍|❌|🗄️|💡|🟢)\s*[^—|：:]*([—|：:][^|]*)?\|\s*$",
+            cell_repl, row)
+
+    fixed = "\n".join(row_repl(line) for line in section.split("\n"))
+    return md[:m.start(1)] + fixed + md[m.end(1):]
+
+
+def correct_factual_claims(md, doc, signals, target_date):
+    """落库后校正日报中可机器校验的标注（方案 A）。
+
+    - 信号块“已纳入跟踪表主题N（类型）”按实际落库 id/事件类型校正；
+    - “验证打卡”表格状态标记按主题实际 verification.status 校正。
+    只校结构化标注，不改写叙事文字；无法确定时保留原文。
+    """
+    day = _iso_date(target_date)
+    if day is None:
+        return md
+    themes = {t["id"]: t for t in doc.get("themes", [])}
+    blocks = re.split(r"(?=^###\s*信号)", md, flags=re.MULTILINE)
+    signal_blocks = [b for b in blocks if re.match(r"^###\s*信号", b, flags=re.MULTILINE)]
+    fixed_blocks = []
+    sig_idx = 0
+    for idx, block in enumerate(blocks):
+        if not re.match(r"^###\s*信号", block, flags=re.MULTILINE):
+            fixed_blocks.append(block)
+            continue
+        sig = signals[sig_idx] if sig_idx < len(signals) else None
+        fixed_blocks.append(_correct_claims_in_block(block, sig, themes, day))
+        sig_idx += 1
+    md = "".join(fixed_blocks)
+    md = _correct_checkin_status(md, themes)
     return md
