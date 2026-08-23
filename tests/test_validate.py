@@ -335,5 +335,23 @@ class TestNotifyHelpers(unittest.TestCase):
         self.assertEqual(rd.build_notify_text(md), md)
 
 
+class TestPromptContract(unittest.TestCase):
+    """PROMPT 硬性规则防回退（2026-08-23：承接必须写实质变化，禁止纯相关性声明）。"""
+
+    @classmethod
+    def setUpClass(cls):
+        prompt_path = os.path.join(os.path.dirname(__file__), "..", "PROMPT.md")
+        with open(prompt_path, encoding="utf-8") as f:
+            cls.prompt = f.read()
+
+    def test_today_keypoints_require_substantive_followup(self):
+        self.assertIn("承接昨日主题仅限实质变化", self.prompt)
+        self.assertIn("纯相关性", self.prompt)
+        self.assertIn("一律不写", self.prompt)
+
+    def test_verified_wording_requires_system_confirmation(self):
+        self.assertIn("仅限系统已确认的验证结果", self.prompt)
+
+
 if __name__ == "__main__":
     unittest.main()
