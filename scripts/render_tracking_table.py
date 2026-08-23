@@ -24,7 +24,7 @@ import os
 import re
 from datetime import datetime
 
-from common import write_atomic, read_json, recompute_stats
+from common import write_atomic, read_json, recompute_stats, MAIN_STATUSES
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.normpath(os.path.join(BASE, "..", "data", "tracking_table.json"))
@@ -453,10 +453,12 @@ def render_digest(doc):
     out.append("")
     out.append(f"> 由 tracking_table.json 自动生成，更新于 {esc(doc['meta'].get('generated_at', '?'))}。完整信息见 reference/initial_signal_tracking_table.md。")
     active = [t for t in doc["themes"]
-              if str((t.get("verification") or {}).get("status", "")) != "归档"]
-    archived_n = len(doc["themes"]) - len(active)
-    if archived_n:
-        out.append(f"> 已归档 {archived_n} 个主题，不在本摘要主表中（完整记录见 reference/initial_signal_tracking_table.md）。")
+              if str((t.get("verification") or {}).get("status", "")) in MAIN_STATUSES]
+    settled = [t for t in doc["themes"]
+               if str((t.get("verification") or {}).get("status", "")) not in MAIN_STATUSES]
+    if settled:
+        out.append(f"> 已结项 {len(settled)} 个主题（已验证/线索/衰减/归档），不在本摘要主表中"
+                   "（完整记录见 reference/initial_signal_tracking_table.md）。")
     out.append("")
     out.append("| # | 主题 | 状态 | 层级 | 首次性 | 具体性 | 政策窗口 | 框架 | 验证日期 | 验证条件 |")
     out.append("|---|------|------|------|--------|--------|---------|------|---------|---------|")
@@ -485,14 +487,25 @@ def render_digest(doc):
     else:
         out.append("- 无")
     out.append("")
+    out.append("### 已结项主题（不在主表，完整记录见 reference/initial_signal_tracking_table.md）")
+    out.append("")
+    if settled:
+        for t in sorted(settled, key=lambda x: int(x.get("id", 0))):
+            v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
+            out.append(f"- 主题{t['id']} {esc(t.get('name', ''))}：{esc(v.get('status', ''))}")
+    else:
+        out.append("- 无")
+    out.append("")
     out.append("### 状态流转规则速查")
     out.append("")
     out.append("- 跟踪中 → 已验证（验证条件满足：联播型看联播原文，外部型可官方源核验）")
     out.append("- 跟踪中 → 延迟验证（验证日期过后、宽限期内满足）")
     out.append("- 跟踪中 → 待复核（宽限期过后联播仍无验证信号：转人工外部核验，不自动判衰减）")
     out.append("- 待复核 → 已验证 / 信号衰减（外部查证证实 / 证伪）")
-    out.append("- 已验证 → 可跟踪线索（验证通过+用户判断值得继续深入）")
+    out.append("- 已验证 → 投资线索就绪（连续 14 天无新进展自动流转，移出主表）")
+    out.append("- 跟踪中/延迟验证 → 待复核（连续 30 天无更新且验证日期过宽限期自动流转）")
     out.append("- 信号衰减 → 归档（移出跟踪表，记录失败原因）")
+    out.append("- 已结项主题复活必须显式 status_change（带证据）或重新建档，不自动") 
     out.append("")
     return "\n".join(out)
 
@@ -513,8 +526,9 @@ def render_tracking(doc):
     out.append("|---|------|------|----------|--------|")
 
     active = [t for t in doc.get("themes", [])
-              if str((t.get("verification") or {}).get("status", "")) != "归档"]
-    archived_n = len(doc.get("themes", [])) - len(active)
+              if str((t.get("verification") or {}).get("status", "")) in MAIN_STATUSES]
+    settled = [t for t in doc.get("themes", [])
+               if str((t.get("verification") or {}).get("status", "")) not in MAIN_STATUSES]
     for t in sorted(active, key=_tracking_sort_key):
         dims = t.get("dimensions") if isinstance(t.get("dimensions"), dict) else {}
         v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
@@ -534,11 +548,22 @@ def render_tracking(doc):
             f"| {int(t.get('id', 0))} | {topic} | {wind_text} | "
             f"{esc(date)} | {esc(short_logic(t))} |"
         )
-    if archived_n:
+    if settled:
         out.append(
-            f"\n> 已归档 {archived_n} 个主题，已移出本表"
+            f"\n> 已结项 {len(settled)} 个主题（已验证/线索/衰减/归档），已移出本表"
             "（完整记录见 reference/initial_signal_tracking_table.md）")
 
+    out += [
+        "",
+        "## 已结项（移出主表，完整记录见完整跟踪表）",
+        "",
+    ]
+    if settled:
+        for t in sorted(settled, key=lambda x: int(x.get("id", 0))):
+            v = t.get("verification") if isinstance(t.get("verification"), dict) else {}
+            out.append(f"- 主题{t['id']} {esc(t.get('name', ''))}｜{esc(v.get('status', ''))}")
+    else:
+        out.append("- 无")
     out += [
         "",
         "## 风向图例",
@@ -548,7 +573,7 @@ def render_tracking(doc):
         "- ⚪ 暂缓：跟踪中 + 窗口封闭",
         "- 🟠 延迟核验：验证日已过，宽限期内",
         "- 🔍 待复核：宽限期已过，等人工核验",
-        "- ✅ 已验证：验证条件已满足",
+        "- ✅ 已验证：验证条件已满足（连续 14 天无新进展自动转线索移出主表）",
         "- 💡 线索：已验证且值得继续深入",
         "- ❌ 证伪/衰减：假设被证伪或信号衰减",
         "- 🗄️ 归档：已移出主跟踪表",

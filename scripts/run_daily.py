@@ -49,7 +49,7 @@ except Exception:  # Python < 3.9 或系统无 tzdata
     CN_TZ = timezone(timedelta(hours=8))
 
 from common import read_text, write_atomic, read_json, write_json, recompute_stats
-from report_enhance import enrich_report, yesterday_focus_block
+from report_enhance import enrich_report, yesterday_focus_block, last_activity
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(ROOT, "scripts")
@@ -88,6 +88,12 @@ DIM_VALUES = {
 }
 VER_STATUS = {"跟踪中", "已验证", "延迟验证", "待复核", "信号衰减", "投资线索就绪", "归档"}
 DEFAULT_CATEGORY = "产业政策与科技创新"
+
+# 自动退出规则（2026-08-23 根治方案，N=14 / M=30）：
+# - 已验证主题连续 N 天无任何事件 → 自动转"投资线索就绪"并移出主表；
+# - 跟踪中/延迟验证主题连续 M 天无任何事件、且验证日期已过宽限期 → 自动转"待复核"。
+IDLE_TO_IDEA_DAYS = 14
+IDLE_TO_REVIEW_DAYS = 30
 
 
 def env_or(name, default=""):
@@ -591,6 +597,74 @@ def apply_expiry_checks(doc, today):
     return changed
 
 
+def _verification_due(v):
+    """解析验证日期 + 宽限期；无法解析时返回 None。"""
+    date_str = str(v.get("date") or "").strip()
+    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})", date_str)
+    if not m:
+        return None
+    try:
+        due = datetime.strptime(m.group(1), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    grace = 0
+    gm = re.fullmatch(r"\+?(\d+)\s*天", str(v.get("grace_period") or "").strip())
+    if gm:
+        grace = int(gm.group(1))
+    return due, grace
+
+
+def apply_idle_checks(doc, today):
+    """自动退出检查（根治方案）：
+
+    1. 已验证主题连续 N=14 天无任何事件 → 投资线索就绪（移出主表）；
+    2. 跟踪中/延迟验证主题连续 M=30 天无任何事件、且验证日期已过宽限期 → 待复核。
+
+    待复核/信号衰减/归档不参与自动流转；归档是终态，永不自动复活，
+    复活必须由分析环节显式 status_change（带证据）或重新建档。
+    """
+    try:
+        today_d = datetime.strptime(today, "%Y-%m-%d").date()
+    except ValueError:
+        return 0
+    changed = 0
+    for t in doc["themes"]:
+        v = t.get("verification") or {}
+        status = str(v.get("status", ""))
+        last = last_activity(t)
+        if last is None:
+            continue
+        idle_days = (today_d - last).days
+        if idle_days < 0:
+            continue
+        if status == "已验证" and idle_days >= IDLE_TO_IDEA_DAYS:
+            v["status"] = "投资线索就绪"
+            t.setdefault("lifecycle", []).append({
+                "date": today,
+                "type": "status_change",
+                "action": "自动退出：已验证 → 投资线索就绪",
+                "evidence": f"距最近事件 {idle_days} 天（≥{IDLE_TO_IDEA_DAYS} 天）无新进展",
+                "reason": "已验证主题长期无新进展，自动转线索并移出主表（2026-08-23 根治方案）",
+            })
+            changed += 1
+            continue
+        if status in ("跟踪中", "延迟验证") and idle_days >= IDLE_TO_REVIEW_DAYS:
+            due = _verification_due(v)
+            # 验证日期在未来或无法解析时只提示不流转，避免误伤未到期主题
+            if due is not None and today_d > due[0] + timedelta(days=due[1]):
+                v["status"] = "待复核"
+                t.setdefault("lifecycle", []).append({
+                    "date": today,
+                    "type": "status_change",
+                    "action": "静默超期自动流转：跟踪中 → 待复核",
+                    "evidence": f"距最近事件 {idle_days} 天（≥{IDLE_TO_REVIEW_DAYS} 天）且验证日期 "
+                                f"{v.get('date')}（宽限期 {v.get('grace_period') or '无'}）已过",
+                    "reason": "长期静默且验证点逾期，转人工外部核验（2026-08-23 根治方案）",
+                })
+                changed += 1
+    return changed
+
+
 # ---------------------------------------------------------------- 通知
 
 def _strip_html(text):
@@ -812,6 +886,14 @@ def main():
         print(f"       到期检查自动流转 {expiry_changed} 个主题")
     else:
         print("       到期检查：无到期检验点")
+
+    idle_changed = apply_idle_checks(doc, target_date)
+    if idle_changed:
+        write_json(PATHS["tracking"], doc, backup=True)
+        print(f"       自动退出检查流转 {idle_changed} 个主题"
+              "（已验证→线索 / 静默超期→待复核）")
+    else:
+        print("       自动退出检查：无流转")
 
     # 第二档：到期主题外部查证（联网核实外部型验证点，避免单一信源假阴性）。
     # 失败/超时只降级为警告，不影响主流程（P1-4 精神）。

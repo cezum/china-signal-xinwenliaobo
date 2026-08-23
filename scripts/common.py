@@ -27,6 +27,10 @@ DIMENSION_FIELDS = (
 
 UNLABELED = "未标注"
 
+# 主表（极简跟踪表 / 日报摘要）只展示的"活跃"状态；
+# 已验证 / 投资线索就绪 / 信号衰减 / 归档 属于已结项，移入副区（完整表保留全量）。
+MAIN_STATUSES = {"跟踪中", "延迟验证", "待复核"}
+
 
 def read_text(path):
     with open(path, "r", encoding="utf-8") as f:

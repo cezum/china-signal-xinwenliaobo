@@ -68,7 +68,7 @@ class TestRenderFull(unittest.TestCase):
         self.assertIn("（跟踪表为空，暂无统计）", text)
 
     def test_archived_excluded_from_digest_and_tracking(self):
-        """归档主题移出极简表与摘要主表，但完整表保留全部记录。"""
+        """归档主题移出极简表与摘要主表（进入已结项区），完整表保留全部记录。"""
         t1 = make_theme(1)
         t2 = make_theme(2, name="已归档主题")
         t2["verification"]["status"] = "归档"
@@ -76,15 +76,37 @@ class TestRenderFull(unittest.TestCase):
         doc["categories"][0]["theme_ids"] = [1, 2]
 
         digest = rt.render_digest(doc)
-        self.assertNotIn("已归档主题", digest)
-        self.assertIn("已归档 1 个主题", digest)
+        main_part = digest.split("### 已结项主题", 1)[0]
+        self.assertNotIn("已归档主题", main_part)
+        self.assertIn("已结项 1 个主题", digest)
+        self.assertIn("已归档主题", digest)  # 已结项区保留名称与状态
 
         tracking = rt.render_tracking(doc)
-        self.assertNotIn("已归档主题", tracking)
-        self.assertIn("已归档 1 个主题", tracking)
+        main_part = tracking.split("## 已结项", 1)[0]
+        self.assertNotIn("已归档主题", main_part)
+        self.assertIn("已结项 1 个主题", tracking)
 
         full = rt.render_full(doc)
         self.assertIn("已归档主题", full)
+
+    def test_verified_excluded_from_main_tables(self):
+        """已验证主题移出主表（进入已结项区），与归档同等对待。"""
+        t1 = make_theme(1, name="已验证主题")
+        t1["verification"]["status"] = "已验证"
+        t2 = make_theme(2, name="待复核主题")
+        t2["verification"]["status"] = "待复核"
+        doc = make_doc(themes=[t1, t2])
+
+        digest = rt.render_digest(doc)
+        main_part = digest.split("### 已结项主题", 1)[0]
+        self.assertNotIn("已验证主题", main_part)
+        self.assertIn("待复核主题", main_part)
+        self.assertIn("已验证主题", digest)
+
+        tracking = rt.render_tracking(doc)
+        main_part = tracking.split("## 已结项", 1)[0]
+        self.assertNotIn("已验证主题", main_part)
+        self.assertIn("待复核主题", main_part)
 
     def test_more_than_10_categories(self):
         themes = [make_theme(i, category=f"大类{i}") for i in range(1, 13)]

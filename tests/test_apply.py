@@ -230,5 +230,57 @@ class TestExpiryChecks(unittest.TestCase):
         self.assertEqual(changed, 0)
 
 
+class TestIdleChecks(unittest.TestCase):
+    """自动退出检查：已验证 14 天→线索；静默 30 天+过宽限期→待复核。"""
+
+    def _theme(self, status="跟踪中", last_date="2026-08-01",
+               ver_date="2026-09-01", grace="+30天"):
+        doc = make_doc()
+        t = doc["themes"][0]
+        t["lifecycle"] = [{"date": last_date, "type": "create", "action": "建档"}]
+        t["verification"].update(
+            {"date": ver_date, "grace_period": grace, "status": status})
+        return doc, t
+
+    def test_verified_idle_14d_becomes_idea(self):
+        doc, t = self._theme(status="已验证", last_date="2026-08-01")
+        changed = rd.apply_idle_checks(doc, "2026-08-23")  # 静默 22 天
+        self.assertEqual(changed, 1)
+        self.assertEqual(t["verification"]["status"], "投资线索就绪")
+        self.assertEqual(t["lifecycle"][-1]["type"], "status_change")
+        self.assertIn("投资线索就绪", t["lifecycle"][-1]["action"])
+
+    def test_verified_recent_untouched(self):
+        doc, t = self._theme(status="已验证", last_date="2026-08-10")
+        changed = rd.apply_idle_checks(doc, "2026-08-23")  # 静默 13 天
+        self.assertEqual(changed, 0)
+        self.assertEqual(t["verification"]["status"], "已验证")
+
+    def test_silent_overdue_tracking_becomes_review(self):
+        doc, t = self._theme(status="跟踪中", last_date="2026-07-01",
+                             ver_date="2026-07-10", grace="+10天")
+        changed = rd.apply_idle_checks(doc, "2026-08-23")
+        self.assertEqual(changed, 1)
+        self.assertEqual(t["verification"]["status"], "待复核")
+
+    def test_silent_but_future_verification_untouched(self):
+        doc, t = self._theme(status="跟踪中", last_date="2026-07-01",
+                             ver_date="2026-09-10", grace="+30天")
+        changed = rd.apply_idle_checks(doc, "2026-08-23")
+        self.assertEqual(changed, 0)
+        self.assertEqual(t["verification"]["status"], "跟踪中")
+
+    def test_terminal_statuses_not_auto_reactivated(self):
+        doc, t = self._theme(status="归档", last_date="2026-07-01")
+        changed = rd.apply_idle_checks(doc, "2026-08-23")
+        self.assertEqual(changed, 0)
+        self.assertEqual(t["verification"]["status"], "归档")
+
+        doc2, t2 = self._theme(status="待复核", last_date="2026-07-01")
+        changed2 = rd.apply_idle_checks(doc2, "2026-08-23")
+        self.assertEqual(changed2, 0)
+        self.assertEqual(t2["verification"]["status"], "待复核")
+
+
 if __name__ == "__main__":
     unittest.main()
