@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "1.2",
-    "generated_at": "2026-08-26",
+    "generated_at": "2026-08-27",
     "source_file": "reference/initial_signal_tracking_table.md (v1) + 8/12-8/17日度更新",
     "data_range": "2026-03-01 至 2026-08-16",
     "headline_total": 1795,
@@ -51,7 +51,11 @@
         52,
         53,
         54,
-        55
+        55,
+        56,
+        57,
+        58,
+        59
       ]
     },
     {
@@ -1200,7 +1204,7 @@
         "source": "联播",
         "date": "2026-08-26",
         "grace_period": "+30天",
-        "status": "跟踪中"
+        "status": "延迟验证"
       },
       "category": "民生保障与公共服务",
       "lifecycle": [
@@ -1233,6 +1237,13 @@
           "to": null,
           "evidence": "联播第11条：截至7月底，医保部门拨付即时结算资金9457.31亿元，覆盖定点医药机构75.22万家",
           "reason": "医保改革数据发布，验证民生保障进展"
+        },
+        {
+          "date": "2026-08-27",
+          "type": "status_change",
+          "action": "验证日期到期自动流转：跟踪中 → 延迟验证",
+          "evidence": "验证日期 2026-08-26（宽限期 +30天）",
+          "reason": "到期检查自动触发"
         }
       ],
       "framework_evidence": "民生框架：命中'保障'、'覆盖'等词典词"
@@ -3374,41 +3385,201 @@
         "external_url": ""
       },
       "category": "产业政策与科技创新"
+    },
+    {
+      "id": 56,
+      "name": "机器人产业创新与具身智能规模化应用",
+      "investment_hypothesis": "机器人产业获政策倾斜 → 具身智能中试验证平台、核心零部件国产化、特种场景规模化部署加速",
+      "public_conduction": "政策信号可能传导至机器人整机制造、核心零部件（减速器、伺服驱动、控制器）、具身智能中试验证平台建设、特种作业场景部署等实物工作量",
+      "dimensions": {
+        "level": "B",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "竞争框架"
+      },
+      "framework_evidence": "全球最大工业机器人市场、自主品牌国内市场占有率突破50%、专利最大拥有国、抢占具身智能发展先机",
+      "lifecycle": [
+        {
+          "date": "2026-08-27",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第9条：机器人产业创新不断涌现，2026上半年营收1655亿元，同比增长24.5%；具身智能纳入十五五规划纲要；工信部、国资委启动人形机器人与具身智能实景实训专项行动",
+          "reason": "机器人产业进入蓬勃发展新阶段，具身智能被纳入未来产业重点战略布局，政策信号明确，验证窗口近"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-27",
+          "event": "联播报道：机器人产业创新不断涌现，2026上半年营收1655亿元，同比增长24.5%；具身智能纳入十五五规划纲要；工信部、国资委启动人形机器人与具身智能实景实训专项行动"
+        }
+      ],
+      "outline_mapping": "纲要第二篇第5章（新兴产业和未来产业）",
+      "verification": {
+        "condition": "联播报道具身智能机器人规模化部署案例或机器人产业月度/季度数据（如营收增速、出口数据）",
+        "source": "联播",
+        "date": "2026-11-27",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
+    },
+    {
+      "id": 57,
+      "name": "中小微企业贷款贴息新政落地",
+      "investment_hypothesis": "财政贴息扩大至中小微民营企业流动资金贷款 → 中小微企业融资成本下降，信贷投放加速",
+      "public_conduction": "政策信号可能传导至中小微企业信贷投放、金融服务、实体经济经营活力等实物工作量",
+      "dimensions": {
+        "level": "B",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "SHORT",
+        "narrative_framework": "发展框架"
+      },
+      "framework_evidence": "培育、壮大、新动能、激发、高质量",
+      "lifecycle": [
+        {
+          "date": "2026-08-27",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第8条：六大商业银行发布公告，中小微企业贷款和服务业经营主体贷款贴息政策落地执行，中央财政按流动资金贷款本金给予年化1个百分点、期限不超过2年的贴息支持",
+          "reason": "财政贴息首次扩大到中小微民营企业流动资金贷款，政策创新性强，验证窗口近"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-27",
+          "event": "联播报道：六大商业银行发布公告，中小微企业贷款和服务业经营主体贷款贴息政策落地执行"
+        }
+      ],
+      "outline_mapping": "纲要第六篇第19章（要素市场化配置）",
+      "verification": {
+        "condition": "联播报道中小微企业贷款贴息政策实施效果数据（如贴息贷款发放规模、企业受益数量）",
+        "source": "联播",
+        "date": "2026-09-27",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
+    },
+    {
+      "id": 58,
+      "name": "高耗能行业节能降碳攻坚行动",
+      "investment_hypothesis": "节能降碳攻坚行动启动 → 高耗能行业技术革新、资源循环利用、清洁能源替代加速",
+      "public_conduction": "政策信号可能传导至钢铁、水泥等高耗能行业节能改造、固废资源化利用、清洁能源替代等实物工作量",
+      "dimensions": {
+        "level": "B",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "安全框架"
+      },
+      "framework_evidence": "节能降碳、绿色转型、资源循环利用、低效产能清零",
+      "lifecycle": [
+        {
+          "date": "2026-08-27",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第11条：国家正式启动为期三年的节能降碳攻坚行动，覆盖钢铁、水泥等九大高耗能产业，三年内推动低效产能清零",
+          "reason": "节能降碳攻坚行动启动，覆盖九大高耗能产业，政策信号明确，验证窗口适中"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-27",
+          "event": "联播报道：国家正式启动为期三年的节能降碳攻坚行动，覆盖钢铁、水泥等九大高耗能产业"
+        }
+      ],
+      "outline_mapping": "纲要第十三篇第47章（碳达峰）",
+      "verification": {
+        "condition": "联播报道节能降碳攻坚行动具体项目落地或高耗能行业节能降碳数据（如重点钢企能耗、固废综合利用率）",
+        "source": "联播",
+        "date": "2026-11-27",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
+    },
+    {
+      "id": 59,
+      "name": "都市圈1小时通勤圈建设",
+      "investment_hypothesis": "都市圈1小时通勤圈建设推进 → 城际轨道交通、跨省公交、枢纽建设加速",
+      "public_conduction": "政策信号可能传导至城际轨道交通建设、跨省公交运营、枢纽站场改造、智慧交通系统等实物工作量",
+      "dimensions": {
+        "level": "B",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "发展框架"
+      },
+      "framework_evidence": "加快构建、扩大、升级、现代化",
+      "lifecycle": [
+        {
+          "date": "2026-08-27",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第12条：我国加快推进都市圈1小时通勤建设，首条横跨京冀的城市轨道交通线路22号线开启空载试运行，到2030年主要都市圈内具备1小时通勤条件的人口覆盖率达到75%",
+          "reason": "都市圈1小时通勤圈建设进入加速期，政策目标明确，验证窗口适中"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-08-27",
+          "event": "联播报道：我国加快推进都市圈1小时通勤建设，22号线开启空载试运行"
+        }
+      ],
+      "outline_mapping": "纲要第九篇第31章（新型城镇化）",
+      "verification": {
+        "condition": "联播报道都市圈1小时通勤圈建设新进展（如22号线开通运营、其他都市圈通勤项目开工）",
+        "source": "联播",
+        "date": "2026-11-27",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
     }
   ],
   "stats": {
     "by_level": {
       "A": 18,
-      "B": 29,
+      "B": 33,
       "C": 8
     },
     "by_novelty": {
       "PROGRESS": 35,
-      "NEW": 20
+      "NEW": 24
     },
     "by_specificity": {
-      "S1": 42,
+      "S1": 46,
       "S2": 13
     },
     "by_policy_window": {
-      "开放": 45,
+      "开放": 49,
       "接近": 9,
       "封闭": 1
     },
     "by_verification_window": {
-      "SHORT": 13,
-      "MID": 40,
+      "SHORT": 14,
+      "MID": 43,
       "LONG": 2
     },
     "by_narrative_framework": {
-      "发展框架": 20,
-      "竞争框架": 12,
+      "发展框架": 22,
+      "竞争框架": 13,
       "民生框架": 13,
-      "安全框架": 10
+      "安全框架": 11
     },
     "by_category": {
       "规划体系与顶层设计": 3,
-      "产业政策与科技创新": 25,
+      "产业政策与科技创新": 29,
       "改革开放": 4,
       "市场体系建设": 1,
       "民生保障与公共服务": 8,
@@ -3420,6 +3591,6 @@
       "宏观经济与政策": 1,
       "民生与社会治理": 1
     },
-    "total": 55
+    "total": 59
   }
 }
