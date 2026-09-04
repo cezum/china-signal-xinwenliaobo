@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "1.2",
-    "generated_at": "2026-09-03",
+    "generated_at": "2026-09-04",
     "source_file": "reference/initial_signal_tracking_table.md (v1) + 8/12-8/17日度更新",
     "data_range": "2026-03-01 至 2026-08-16",
     "headline_total": 1795,
@@ -57,7 +57,8 @@
         58,
         59,
         60,
-        61
+        61,
+        67
       ]
     },
     {
@@ -4026,41 +4027,81 @@
         "external_url": ""
       },
       "category": "民生与社会保障"
+    },
+    {
+      "id": 67,
+      "name": "电力安全事故应急处置与调查处理条例修订",
+      "investment_hypothesis": "电力安全监管强化 → 电网调度自动化、安全监测设备、应急管理系统需求增加",
+      "public_conduction": "条例修订将推动电力企业、电力用户及并网主体加强安全隐患排查，提升电网调度与应急响应能力，可能带动电力安全监测、调度自动化、应急装备等领域的投资与建设。",
+      "dimensions": {
+        "level": "B",
+        "novelty": "NEW",
+        "specificity": "S1",
+        "policy_window": "开放",
+        "verification_window": "MID",
+        "narrative_framework": "安全框架"
+      },
+      "framework_evidence": "安全、事故隐患排查、统一调度",
+      "lifecycle": [
+        {
+          "date": "2026-09-04",
+          "type": "create",
+          "action": "主题建档（首次纳入跟踪）",
+          "evidence": "联播第5条：李强签署国务院令公布修订后的《电力安全事故应急处置和调查处理条例》",
+          "reason": "国务院令公布修订条例，属于电力安全领域重要法规更新，具有政策载体和新信息"
+        }
+      ],
+      "timeline": [
+        {
+          "date": "2026-09-04",
+          "event": "联播报道：李强签署国务院令公布修订后的《电力安全事故应急处置和调查处理条例》"
+        }
+      ],
+      "outline_mapping": "第十四篇第52章：经济安全（能源安全）",
+      "verification": {
+        "condition": "联播报道电力安全相关配套措施或事故调查案例应用新条例",
+        "source": "联播",
+        "date": "2026-12-04",
+        "grace_period": "+30天",
+        "status": "跟踪中",
+        "external_url": ""
+      },
+      "category": "产业政策与科技创新"
     }
   ],
   "stats": {
     "by_level": {
       "A": 20,
-      "B": 37,
+      "B": 38,
       "C": 9
     },
     "by_novelty": {
       "PROGRESS": 36,
-      "NEW": 30
+      "NEW": 31
     },
     "by_specificity": {
-      "S1": 53,
+      "S1": 54,
       "S2": 13
     },
     "by_policy_window": {
-      "开放": 56,
+      "开放": 57,
       "接近": 9,
       "封闭": 1
     },
     "by_verification_window": {
       "SHORT": 16,
-      "MID": 48,
+      "MID": 49,
       "LONG": 2
     },
     "by_narrative_framework": {
       "发展框架": 27,
       "竞争框架": 13,
       "民生框架": 15,
-      "安全框架": 11
+      "安全框架": 12
     },
     "by_category": {
       "规划体系与顶层设计": 3,
-      "产业政策与科技创新": 31,
+      "产业政策与科技创新": 32,
       "改革开放": 4,
       "市场体系建设": 1,
       "民生保障与公共服务": 8,
@@ -4076,6 +4117,6 @@
       "区域协调发展": 1,
       "民生与社会保障": 2
     },
-    "total": 66
+    "total": 67
   }
 }
